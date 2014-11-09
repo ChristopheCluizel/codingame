@@ -19,7 +19,8 @@ public:
 
     void setIdOwner(int idOwner);
     void addAdjacentZone(int zoneId);
-    void setTabNbPodEachPlayerPresent(int tabNbPodEachPlayerPresent[]);
+    void addPodInTabPodEachPlayerPresent(int indexPlayer, int nbPod);
+    void setTabPodEachPlayerPresent(int tabPod[]);
 
     /* for debug */
     void display();
@@ -79,27 +80,41 @@ void Zone::addAdjacentZone(int zoneId)
     m_vecAdjacentZones.push_back(zoneId);
 }
 
-void Zone::setTabNbPodEachPlayerPresent(int tabNbPodEachPlayerPresent[])
+void Zone::addPodInTabPodEachPlayerPresent(int indexPlayer, int nbPod)
+{
+    m_tabNbPodEachPlayerPresent[indexPlayer] += nbPod;
+}
+
+void Zone::setTabPodEachPlayerPresent(int tabPod[])
 {
     for(int i = 0; i < 4; i++)
     {
-        m_tabNbPodEachPlayerPresent[i] = tabNbPodEachPlayerPresent[i];
+        m_tabNbPodEachPlayerPresent[i] = tabPod[i];
     }
 }
 
 void Zone::display()
 {
-    cout<<"============================================="<<endl;
-    cout<<"Zone "<<m_id<<" owned by "<<m_ownerId<<" produces "<<m_platiniumSource<<" platinum"<<endl;
-    cout<<"Troops present : P0 -> "<<m_tabNbPodEachPlayerPresent[0]<<" | P1 -> "<<m_tabNbPodEachPlayerPresent[1]<<" | P2 -> "<<
+    cerr<<"============================================="<<endl;
+    cerr<<"Zone "<<m_id<<" owned by "<<m_ownerId<<" produces "<<m_platiniumSource<<" platinum"<<endl;
+    cerr<<"Troops present : P0 -> "<<m_tabNbPodEachPlayerPresent[0]<<" | P1 -> "<<m_tabNbPodEachPlayerPresent[1]<<" | P2 -> "<<
         m_tabNbPodEachPlayerPresent[2]<<" | P3 -> "<<m_tabNbPodEachPlayerPresent[3]<<endl;
-    cout<<"-------- adjacent zones -------"<<endl;
+    cerr<<"-------- adjacent zones -------"<<endl;
     for(int i = 0; i < m_vecAdjacentZones.size(); i++)
     {
-        cout<<m_vecAdjacentZones[i]<<" | ";
+        cerr<<m_vecAdjacentZones[i]<<" | ";
     }
-    cout<<endl;
+    cerr<<endl;
 }
+
+class ComparePlatinumQuantity
+{
+    public:
+        bool operator()(Zone zone1, Zone zone2)
+        {
+            return zone1.getPlatiniumSource() > zone2.getPlatiniumSource();
+        }
+};
 
 /* function */
 void displayAllZones(vector<Zone> vecZones)
@@ -115,52 +130,62 @@ string createMovingOrders(int myId, vector<Zone> vecZones)
     return "WAIT";
 }
 
-// struct myclass {
-//   bool operator() (Zone zone1, Zone zone2) { return (zone1.getPlatiniumSource() > zone2.getPlatiniumSource());}
-// } myobject;
-
-int findZoneOfDeployment(int myId, vector<Zone> vecZones)
+int findZoneOfDeployment(int myId, vector<Zone> &vecZones)
 {
-    vector<Zone> vecZonesWithPlatinum;
-
+    vector<int> vecIdZonesWithPlatinum;
+    // displayAllZones(vecZones);
     for(int i = 0; i < vecZones.size(); i++)
     {
         if(vecZones[i].getPlatiniumSource() > 0)
-            vecZonesWithPlatinum.push_back(vecZones[i]);
+        {
+            vecIdZonesWithPlatinum.push_back(vecZones[i].getZoneId());
+            // cerr<<"id zone with platinum "<<vecIdZonesWithPlatinum[i]<<endl;
+        }
     }
-    // reverse(vecZonesWithPlatinum.begin(), vecZonesWithPlatinum.end(), myobject);
-    // displayAllZones(vecZonesWithPlatinum);
-    for(int i = 0; i < vecZonesWithPlatinum.size(); i++)
+    // for(int i = 0; i < vecIdZonesWithPlatinum.size(); i++)
+    // {
+    //     cerr<<"zone plat : "<<vecIdZonesWithPlatinum[i]<<endl;
+    // }
+    
+    for(int i = 0; i < vecIdZonesWithPlatinum.size(); i++)
     {
-        int zoneOwnerId = vecZonesWithPlatinum[i].getOwnerId();
-        // cout<<"zoneOwnerId : "<<zoneOwnerId<<endl;
-        if((zoneOwnerId == myId || zoneOwnerId == -1) && (vecZonesWithPlatinum[i].getTabNbPodEachPlayerPresent()[myId] == 0))
-            return vecZonesWithPlatinum[i].getZoneId();
+        int zoneOwnerId = vecZones[i].getOwnerId();
+        // cerr<<"zoneOwnerId : "<<zoneOwnerId<<endl;
+        if((zoneOwnerId == myId || zoneOwnerId == -1) && (vecZones[i].getTabNbPodEachPlayerPresent()[myId] == 0))
+        {
+            //cerr<<"nbPodInThisZone before "<<vecZones[i].getTabNbPodEachPlayerPresent()[myId]<<endl;
+            vecZones[i].addPodInTabPodEachPlayerPresent(myId, 1);
+            // displayAllZones(vecZones);
+            // vecZonesWithPlatinum[i].addPodInTabPodEachPlayerPresent(myId, 1);
+            // cerr<<"nbPodInThisZone after "<<vecZones[i].getTabNbPodEachPlayerPresent()[myId]<<endl;
+            return vecZones[i].getZoneId();
+        }
     }
-    return -1; 
+    return vecIdZonesWithPlatinum[0]; 
 }
 
 string createBuyingOrders(int myId, vector<Zone> vecZones, int platinumReserve)
 {
     string orders;
     int deployingZoneId = 0;
-    ostringstream oss;
 
-    while(platinumReserve >= 20)
+    if(platinumReserve >= 20)
     {
-        // cout<<"platinumReserve : "<<platinumReserve<<endl;
-        deployingZoneId = findZoneOfDeployment(myId, vecZones);
-        // cout<<"deployingZoneId : "<<deployingZoneId<<endl;
-        oss << deployingZoneId;
-        if(deployingZoneId != -1)
+        while(platinumReserve >= 20)
+        {
+            ostringstream oss;
+            // cerr<<"platinumReserve : "<<platinumReserve<<endl;
+            deployingZoneId = findZoneOfDeployment(myId, vecZones);
+            // displayAllZones(vecZones);
+            // cerr<<"deployingZoneId : "<<deployingZoneId<<endl;
+            oss << deployingZoneId;
             orders += "1 " + oss.str() + " ";
- 
-        platinumReserve -= 20;
-    }
-    orders[orders.size() - 1] = '\0';
-
-    if(!orders.empty())
+     
+            platinumReserve -= 20;
+        }
+        orders.pop_back();
         return orders;
+    }
     else
         return "WAIT";
 }
@@ -189,11 +214,13 @@ int main()
         vecZones[zone1].addAdjacentZone(zone2);
         vecZones[zone2].addAdjacentZone(zone1);
     }
+    sort(vecZones.begin(), vecZones.end(), ComparePlatinumQuantity());
 
     // displayAllZones(vecZones);
 
     int counter = 0; //for debug
-    while(1) 
+    while(counter < 2) 
+    // while(1)
     {
         int platinumReserve;
         cin >> platinumReserve; cin.ignore();
@@ -207,11 +234,22 @@ int main()
             int podsP2; // player 2's PODs on this zone (always 0 for a two player game)
             int podsP3; // player 3's PODs on this zone (always 0 for a two or three player game)
             cin >> zId >> ownerId >> podsP0 >> podsP1 >> podsP2 >> podsP3; cin.ignore();
+
+            // int tabPod[4] = {podsP0, podsP1, podsP2, podsP3};
+            // for(int j = 0; j < zoneCount; j++)
+            // {
+            //     if(vecZones[j].getZoneId() == zId)
+            //     {
+            //         vecZones[j].setIdOwner(ownerId);
+            //         vecZones[j].setTabPodEachPlayerPresent(tabPod);
+            //     }
+            // }       
         }
 
-
+        //displayAllZones(vecZones);
         cout << createMovingOrders(myId, vecZones) << endl; // movements
-        cout << createBuyingOrders(myId, vecZones, platinumReserve) << endl; // buying
+        cout << createBuyingOrders(myId, vecZones, platinumReserve)<<endl; // buying
         counter++;
+        // cerr<<"pouet"<<endl;
     }
 }
