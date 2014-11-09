@@ -72,7 +72,7 @@ vector<int> Zone::getVecAdjacentZones()
 
 void Zone::setIdOwner(int idOwner)
 {
-    m_id = idOwner;
+    m_ownerId = idOwner;
 }
 
 void Zone::addAdjacentZone(int zoneId)
@@ -198,6 +198,7 @@ int main()
     int linkCount; // the amount of links between all zones
     vector<Zone> vecZones;
     cin >> playerCount >> myId >> zoneCount >> linkCount; cin.ignore();
+    // cerr<<"zoneCount : "<<zoneCount<<endl;
 
     for (int i = 0; i < zoneCount; i++)
     {
@@ -219,8 +220,8 @@ int main()
     // displayAllZones(vecZones);
 
     int counter = 0; //for debug
-    while(counter < 2) 
-    // while(1)
+    // while(counter < 2) 
+    while(1)
     {
         int platinumReserve;
         cin >> platinumReserve; cin.ignore();
@@ -234,19 +235,23 @@ int main()
             int podsP2; // player 2's PODs on this zone (always 0 for a two player game)
             int podsP3; // player 3's PODs on this zone (always 0 for a two or three player game)
             cin >> zId >> ownerId >> podsP0 >> podsP1 >> podsP2 >> podsP3; cin.ignore();
+            // cerr<<zId<<" | "<<ownerId<<" | "<<podsP0<<" | "<<podsP1<<" | "<<podsP2<<" | "<<podsP3<<endl;
 
-            // int tabPod[4] = {podsP0, podsP1, podsP2, podsP3};
-            // for(int j = 0; j < zoneCount; j++)
-            // {
-            //     if(vecZones[j].getZoneId() == zId)
-            //     {
-            //         vecZones[j].setIdOwner(ownerId);
-            //         vecZones[j].setTabPodEachPlayerPresent(tabPod);
-            //     }
-            // }       
+            int tabPod[4] = {podsP0, podsP1, podsP2, podsP3};
+            for(int j = 0; j < zoneCount; j++)
+            {
+                if(vecZones[j].getZoneId() == zId)
+                {
+                    // cerr<<"j : "<<j<<" vecZOne i : "<<vecZones[j].getZoneId()<<endl;
+                    // cerr<<"ownerId : "<<ownerId<<endl;
+                    vecZones[j].setIdOwner(ownerId);
+                    vecZones[j].setTabPodEachPlayerPresent(tabPod);
+                    break;
+                }
+            }       
         }
 
-        //displayAllZones(vecZones);
+        // displayAllZones(vecZones);
         cout << createMovingOrders(myId, vecZones) << endl; // movements
         cout << createBuyingOrders(myId, vecZones, platinumReserve)<<endl; // buying
         counter++;
