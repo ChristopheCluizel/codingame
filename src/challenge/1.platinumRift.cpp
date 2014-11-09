@@ -16,11 +16,14 @@ public:
     int getOwnerId();
     int* getTabNbPodEachPlayerPresent();
     vector<int> getVecAdjacentZones();
+    int getNbOwnPodPresent(int myId);
 
     void setIdOwner(int idOwner);
     void addAdjacentZone(int zoneId);
     void addPodInTabPodEachPlayerPresent(int indexPlayer, int nbPod);
     void setTabPodEachPlayerPresent(int tabPod[]);
+
+    bool isOwnPodPresent(int myId);
 
     /* for debug */
     void display();
@@ -93,6 +96,16 @@ void Zone::setTabPodEachPlayerPresent(int tabPod[])
     }
 }
 
+bool Zone::isOwnPodPresent(int myId)
+{
+    return m_tabNbPodEachPlayerPresent[myId] != 0;
+}
+
+int Zone::getNbOwnPodPresent(int myId)
+{
+    return m_tabNbPodEachPlayerPresent[myId];
+}
+
 void Zone::display()
 {
     cerr<<"============================================="<<endl;
@@ -127,7 +140,38 @@ void displayAllZones(vector<Zone> vecZones)
 
 string createMovingOrders(int myId, vector<Zone> vecZones)
 {
-    return "WAIT";
+    int idZoneDest = 0;
+    int idZoneOrigine = 0;
+    int nbOfDest = 0;
+    int indexAlea = 0;
+    string orders;
+
+    for(int i = 0; i < vecZones.size(); i++)
+    {
+        ostringstream oss1;
+        ostringstream oss2;
+        if(vecZones[i].isOwnPodPresent(myId))
+        {
+            idZoneOrigine = vecZones[i].getZoneId();
+            nbOfDest = vecZones[i].getVecAdjacentZones().size();
+            cerr<<"idZone : "<<idZoneOrigine<<" nbOfDest : "<<nbOfDest<<endl;
+            indexAlea = rand() % nbOfDest;
+            idZoneDest = vecZones[i].getVecAdjacentZones()[indexAlea];
+            cerr<<"indexAlea : "<<indexAlea<<" idZoneDest : "<<idZoneDest<<endl;
+
+            oss1 << idZoneOrigine;
+            orders += "1 " + oss1.str() + " ";
+            oss2 << idZoneDest;
+            orders += oss2.str() + " ";
+        }
+    }
+    if(!orders.empty())
+    {
+        orders.pop_back();
+        return orders;
+    }
+    else
+        return "WAIT";
 }
 
 int findZoneOfDeployment(int myId, vector<Zone> &vecZones)
@@ -153,11 +197,8 @@ int findZoneOfDeployment(int myId, vector<Zone> &vecZones)
         // cerr<<"zoneOwnerId : "<<zoneOwnerId<<endl;
         if((zoneOwnerId == myId || zoneOwnerId == -1) && (vecZones[i].getTabNbPodEachPlayerPresent()[myId] == 0))
         {
-            //cerr<<"nbPodInThisZone before "<<vecZones[i].getTabNbPodEachPlayerPresent()[myId]<<endl;
             vecZones[i].addPodInTabPodEachPlayerPresent(myId, 1);
             // displayAllZones(vecZones);
-            // vecZonesWithPlatinum[i].addPodInTabPodEachPlayerPresent(myId, 1);
-            // cerr<<"nbPodInThisZone after "<<vecZones[i].getTabNbPodEachPlayerPresent()[myId]<<endl;
             return vecZones[i].getZoneId();
         }
     }
@@ -197,6 +238,8 @@ int main()
     int zoneCount; // the amount of zones on the map
     int linkCount; // the amount of links between all zones
     vector<Zone> vecZones;
+
+    srand (time(NULL));
     cin >> playerCount >> myId >> zoneCount >> linkCount; cin.ignore();
     // cerr<<"zoneCount : "<<zoneCount<<endl;
 
@@ -220,7 +263,7 @@ int main()
     // displayAllZones(vecZones);
 
     int counter = 0; //for debug
-    // while(counter < 2) 
+    // while(counter < 1) 
     while(1)
     {
         int platinumReserve;
@@ -255,6 +298,5 @@ int main()
         cout << createMovingOrders(myId, vecZones) << endl; // movements
         cout << createBuyingOrders(myId, vecZones, platinumReserve)<<endl; // buying
         counter++;
-        // cerr<<"pouet"<<endl;
     }
 }
