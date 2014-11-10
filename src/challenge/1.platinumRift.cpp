@@ -15,7 +15,8 @@ public:
     int getPlatiniumSource();
     int getOwnerId();
     int* getTabNbPodEachPlayerPresent();
-    vector<int> getVecAdjacentZones();
+    vector<Zone> getAdjacentZones();
+    vector<int> getVecIdAdjacentZones();
     int getNbOwnPodPresent(int myId);
 
     void setIdOwner(int idOwner);
@@ -24,6 +25,8 @@ public:
     void setTabPodEachPlayerPresent(int tabPod[]);
 
     bool isOwnPodPresent(int myId);
+    int findIdAjacentZoneWithMaxPlatinum(int myId);
+    int createMovingOrders_randomMove();
 
     /* for debug */
     void display();
@@ -32,9 +35,26 @@ private:
     int m_id;
     int m_ownerId;
     int m_platiniumSource;
-    vector<int> m_vecAdjacentZones;
+    vector<int> m_vecIdAdjacentZones;   // should be deleted ??
+    vector<Zone> m_vecAdjacentZones;
     int m_tabNbPodEachPlayerPresent[4];
 };
+
+class ComparePlatinumQuantity
+{
+    public:
+        bool operator()(Zone zone1, Zone zone2)
+        {
+            return zone1.getPlatiniumSource() > zone2.getPlatiniumSource();
+        }
+};
+
+/* global variables */
+vector<Zone> vecZones;
+
+/* declaration of functions */
+Zone getZoneWithId(int idZone);
+void displayAllZones(vector<Zone> vecZones);
 
 /* implementation of the class Zone */
 Zone::Zone(int zoneId, int platiniumSource)
@@ -68,10 +88,15 @@ int* Zone::getTabNbPodEachPlayerPresent()
     return m_tabNbPodEachPlayerPresent;
 }
 
-vector<int> Zone::getVecAdjacentZones()
+vector<int> Zone::getVecIdAdjacentZones()
+{
+    return m_vecIdAdjacentZones;
+}
+
+vector<Zone> Zone::getAdjacentZones()
 {
     return m_vecAdjacentZones;
-}
+}   
 
 void Zone::setIdOwner(int idOwner)
 {
@@ -80,7 +105,8 @@ void Zone::setIdOwner(int idOwner)
 
 void Zone::addAdjacentZone(int zoneId)
 {
-    m_vecAdjacentZones.push_back(zoneId);
+    m_vecIdAdjacentZones.push_back(zoneId);
+    m_vecAdjacentZones.push_back(getZoneWithId(zoneId));
 }
 
 void Zone::addPodInTabPodEachPlayerPresent(int indexPlayer, int nbPod)
@@ -106,6 +132,33 @@ int Zone::getNbOwnPodPresent(int myId)
     return m_tabNbPodEachPlayerPresent[myId];
 }
 
+int Zone::findIdAjacentZoneWithMaxPlatinum(int myId)
+{
+    vector<Zone> vecZonesPotentialDestination;
+
+    // cerr<<"idZone : "<<m_id<<endl;
+    for(int i = 0; i < m_vecAdjacentZones.size(); i++)
+    {
+        if(getZoneWithId(m_vecAdjacentZones[i].getZoneId()).getOwnerId() != myId)
+            vecZonesPotentialDestination.push_back(m_vecAdjacentZones[i]);
+    }
+    // displayAllZones(vecZonesPotentialDestination);
+    if(vecZonesPotentialDestination.empty())    // all the adjacent zones are mine -> random move
+    {
+        return createMovingOrders_randomMove();
+    }
+    else
+    {
+        for(int i = 0; i < vecZonesPotentialDestination.size(); i++)
+        {
+            if(vecZonesPotentialDestination[i].getPlatiniumSource() == 0)
+                vecZonesPotentialDestination.erase(vecZonesPotentialDestination.begin() + i);
+        }
+        sort(vecZonesPotentialDestination.begin(), vecZonesPotentialDestination.end(), ComparePlatinumQuantity());
+        return vecZonesPotentialDestination[0].getZoneId();
+    }
+}
+
 void Zone::display()
 {
     cerr<<"============================================="<<endl;
@@ -113,21 +166,22 @@ void Zone::display()
     cerr<<"Troops present : P0 -> "<<m_tabNbPodEachPlayerPresent[0]<<" | P1 -> "<<m_tabNbPodEachPlayerPresent[1]<<" | P2 -> "<<
         m_tabNbPodEachPlayerPresent[2]<<" | P3 -> "<<m_tabNbPodEachPlayerPresent[3]<<endl;
     cerr<<"-------- adjacent zones -------"<<endl;
-    for(int i = 0; i < m_vecAdjacentZones.size(); i++)
+    for(int i = 0; i < m_vecIdAdjacentZones.size(); i++)
     {
-        cerr<<m_vecAdjacentZones[i]<<" | ";
+        cerr<<m_vecIdAdjacentZones[i]<<" | ";
     }
     cerr<<endl;
 }
 
-class ComparePlatinumQuantity
+int Zone::createMovingOrders_randomMove()
 {
-    public:
-        bool operator()(Zone zone1, Zone zone2)
-        {
-            return zone1.getPlatiniumSource() > zone2.getPlatiniumSource();
-        }
-};
+    int index;
+    int nbOfDest = m_vecAdjacentZones.size();
+
+    index = rand() % nbOfDest;
+
+    return m_vecAdjacentZones[index].getZoneId(); 
+}
 
 /* function */
 void displayAllZones(vector<Zone> vecZones)
@@ -138,31 +192,58 @@ void displayAllZones(vector<Zone> vecZones)
     }
 }
 
-string createMovingOrders(int myId, vector<Zone> vecZones)
+Zone getZoneWithId(int idZone)
+{
+    for(int i = 0; i < vecZones.size(); i++)
+    {
+        if(vecZones[i].getZoneId() == idZone)
+        {
+            return vecZones[i];
+            break;
+        }
+    }
+}
+
+string buildOrdersForOneMovement(int idZoneOrigine, int idZoneDest)
+{
+    string orders;
+    ostringstream oss1;
+    ostringstream oss2;
+
+    oss1 << idZoneOrigine;
+    orders += "1 " + oss1.str() + " "; // '1' for the move of 1 Pod 
+    oss2 << idZoneDest;
+    orders += oss2.str() + " ";
+
+    return orders;
+}
+
+int createMovingOrders_attractPlatinumMove(Zone zone, int myId)
+{
+    return zone.findIdAjacentZoneWithMaxPlatinum(myId);
+}
+
+string createMovingOrders(int myId)
 {
     int idZoneDest = 0;
     int idZoneOrigine = 0;
-    int nbOfDest = 0;
-    int indexAlea = 0;
+    // int nbOfDest = 0;
+    int indexDest = 0;
     string orders;
 
     for(int i = 0; i < vecZones.size(); i++)
     {
-        ostringstream oss1;
-        ostringstream oss2;
         if(vecZones[i].isOwnPodPresent(myId))
         {
             idZoneOrigine = vecZones[i].getZoneId();
-            nbOfDest = vecZones[i].getVecAdjacentZones().size();
-            cerr<<"idZone : "<<idZoneOrigine<<" nbOfDest : "<<nbOfDest<<endl;
-            indexAlea = rand() % nbOfDest;
-            idZoneDest = vecZones[i].getVecAdjacentZones()[indexAlea];
-            cerr<<"indexAlea : "<<indexAlea<<" idZoneDest : "<<idZoneDest<<endl;
+            // cerr<<"idZone : "<<idZoneOrigine<<" nbOfDest : "<<nbOfDest<<endl;
+            // cerr<<"indexAlea : "<<indexAlea<<" idZoneDest : "<<idZoneDest<<endl;
+            
+            // idZoneDest = vecZones[i].createMovingOrders_randomMove();
+            idZoneDest = createMovingOrders_attractPlatinumMove(vecZones[i], myId);
+            vecZones[i].addPodInTabPodEachPlayerPresent(myId, 1);
 
-            oss1 << idZoneOrigine;
-            orders += "1 " + oss1.str() + " ";
-            oss2 << idZoneDest;
-            orders += oss2.str() + " ";
+            orders += buildOrdersForOneMovement(idZoneOrigine, idZoneDest);
         }
     }
     if(!orders.empty())
@@ -205,7 +286,7 @@ int findZoneOfDeployment(int myId, vector<Zone> &vecZones)
     return vecIdZonesWithPlatinum[0]; 
 }
 
-string createBuyingOrders(int myId, vector<Zone> vecZones, int platinumReserve)
+string createBuyingOrders(int myId, int platinumReserve)
 {
     string orders;
     int deployingZoneId = 0;
@@ -237,7 +318,6 @@ int main()
     int myId; // my player ID (0, 1, 2 or 3)
     int zoneCount; // the amount of zones on the map
     int linkCount; // the amount of links between all zones
-    vector<Zone> vecZones;
 
     srand (time(NULL));
     cin >> playerCount >> myId >> zoneCount >> linkCount; cin.ignore();
@@ -295,8 +375,8 @@ int main()
         }
 
         // displayAllZones(vecZones);
-        cout << createMovingOrders(myId, vecZones) << endl; // movements
-        cout << createBuyingOrders(myId, vecZones, platinumReserve)<<endl; // buying
+        cout << createMovingOrders(myId) << endl; // movements
+        cout << createBuyingOrders(myId, platinumReserve)<<endl; // buying
         counter++;
     }
 }
