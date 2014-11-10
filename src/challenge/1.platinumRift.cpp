@@ -155,7 +155,11 @@ int Zone::findIdAjacentZoneWithMaxPlatinum(int myId)
                 vecZonesPotentialDestination.erase(vecZonesPotentialDestination.begin() + i);
         }
         sort(vecZonesPotentialDestination.begin(), vecZonesPotentialDestination.end(), ComparePlatinumQuantity());
-        return vecZonesPotentialDestination[0].getZoneId();
+
+        if(!vecZonesPotentialDestination.empty())
+            return vecZonesPotentialDestination[0].getZoneId();
+        else
+            return createMovingOrders_randomMove();
     }
 }
 
@@ -255,7 +259,7 @@ string createMovingOrders(int myId)
         return "WAIT";
 }
 
-int findZoneOfDeployment(int myId, vector<Zone> &vecZones)
+int findZoneOfDeployment(int myId)
 {
     vector<int> vecIdZonesWithPlatinum;
     // displayAllZones(vecZones);
@@ -297,7 +301,7 @@ string createBuyingOrders(int myId, int platinumReserve)
         {
             ostringstream oss;
             // cerr<<"platinumReserve : "<<platinumReserve<<endl;
-            deployingZoneId = findZoneOfDeployment(myId, vecZones);
+            deployingZoneId = findZoneOfDeployment(myId);
             // displayAllZones(vecZones);
             // cerr<<"deployingZoneId : "<<deployingZoneId<<endl;
             oss << deployingZoneId;
@@ -342,7 +346,7 @@ int main()
 
     // displayAllZones(vecZones);
 
-    int counter = 0; //for debug
+    bool firstRound = true;
     // while(counter < 1) 
     while(1)
     {
@@ -375,8 +379,21 @@ int main()
         }
 
         // displayAllZones(vecZones);
-        cout << createMovingOrders(myId) << endl; // movements
-        cout << createBuyingOrders(myId, platinumReserve)<<endl; // buying
-        counter++;
+        string moveOrderTemp = createMovingOrders(myId);
+        string buyingAndDeploy = createBuyingOrders(myId, platinumReserve);
+
+        cout << moveOrderTemp << endl; // movements
+        if(firstRound)
+        {
+            cout<<"WAIT"<<endl;
+            firstRound = false;
+        }
+        else
+        {
+            cout << buyingAndDeploy <<endl; // buying and deploy
+        }
+
+        //cerr<<"move : "<<moveOrderTemp<<endl;
+        //cerr<<"buyAndDeploy : "<<buyingAndDeploy<<endl;
     }
 }
