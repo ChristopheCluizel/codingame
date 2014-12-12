@@ -5,43 +5,50 @@
 
 using namespace std;
 
-/**
- * Auto-generated code below aims at helping you parse
- * the standard input according to the problem statement.
- **/
+string alphabetMinuscule = "abcdefghijklmnopqrstuvwxyz";
+string alphabetMajuscule = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+int trouverIndiceLettreDansAlphabet(char lettre)
+{
+    for(int i =0; i < 27; i++)
+    {
+        if((alphabetMajuscule[i] == lettre) || (alphabetMinuscule[i] == lettre))
+            return i;
+    }
+
+    return 26;
+}
+
 int main()
 {
     int L;
     cin >> L; cin.ignore();
     int H;
     cin >> H; cin.ignore();
-    string T;
-    getline(cin, T);
-    char temp;
-    // cout<<T<<endl;
-    vector< vector<char> > tabAlphabet;
+    string phrase;
+    getline(cin, phrase);
+    
+    vector<string> tabAlphabet;
+    int indice;
+
     for (int i = 0; i < H; i++)
     {
-        vector<char> row;
-        for(int j = 0; j < L*26; j++)
-        {
-            cin >> temp;
-            row.push_back(temp);
-        }
-        tabAlphabet.push_back(row);
+        string ligne;
+        getline(cin, ligne);
+        tabAlphabet.push_back(ligne);
     }
-    for (int i = 0; i < H; i++)
+
+    for(int j = 0; j < H; j++)
     {
-        for(int j = 0; j < L; j++)
+        for(int i = 0; i < phrase.size(); i++)   // pour chaque lettre de la phrase
         {
-            cout<<tabAlphabet[i][j];
+            indice = trouverIndiceLettreDansAlphabet(phrase[i]);
+            //cerr<<"indice : "<<indice<<endl;
+            for(int k = indice * L; k < (indice *L) + L; k++)
+            {
+                cout<<tabAlphabet[j][k];
+            }
         }
         cout<<endl;
     }
-
-    // Write an action using cout. DON'T FORGET THE "<< endl"
-    // To debug: cerr << "Debug messages..." << endl;
-
-    
-
 }
