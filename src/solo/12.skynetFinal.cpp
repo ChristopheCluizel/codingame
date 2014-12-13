@@ -31,7 +31,6 @@ public:
     void addIdAdjacentNodes(int idAdjacentNode)
     {
         m_idAdjacentNodes.push_back(idAdjacentNode);
-        // displayIdAdjacentNodes();
     }
     vector<int> getIdAdjacentNodes()
     {
@@ -42,7 +41,9 @@ public:
         for(int i = 0; i < m_idAdjacentNodes.size(); i++)
         {
             if(m_idAdjacentNodes[i] == idAdjacentNode)
+            {
                 m_idAdjacentNodes.erase(m_idAdjacentNodes.begin() + i);
+            }
         }
     }
     void displayIdAdjacentNodes()
@@ -174,46 +175,33 @@ int main()
         int N2;
         cin >> N1 >> N2; cin.ignore();
         // cerr<<"N1 : "<<N1<<" -> N2 : "<<N2<<endl;
-        // Node node1(N1, false);
-        // Node node2(N2, false);
         if(!network.isIdNodePresent(N1))
         {
-            // cerr<<"node "<< N1 <<" not present"<<endl;
             network.addNode(new Node(N1, false));
         }
         if(!network.isIdNodePresent(N2))
         {
-            // cerr<<"node "<<N2<<" not present"<<endl;
             network.addNode(new Node(N2, false));
         }
-        // cerr<<network.getNodes().at(N1).getId()<<endl;
-        // cerr<<network.getNodes().at(N2).getId()<<endl;
         network.getNodes().at(N1)->addIdAdjacentNodes(N2);
         network.getNodes().at(N2)->addIdAdjacentNodes(N1);
-        // network.getNodes().at(N1).displayIdAdjacentNodes();
     }
 
-    cerr<<"nbTotalNodes : "<<network.getNbTotalNodes()<<endl;
-    cerr<<"nbLinks : "<<network.getNbLinks()<<endl;
-    cerr<<"nbExitGateways : "<<network.getNbExitGateways()<<endl;
+    // cerr<<"nbTotalNodes : "<<network.getNbTotalNodes()<<endl;
+    // cerr<<"nbLinks : "<<network.getNbLinks()<<endl;
+    // cerr<<"nbExitGateways : "<<network.getNbExitGateways()<<endl;
 
-    cerr<<endl<<endl;
-    /* check if adjacentNodes correct */
-    // for (int i = 0; i < nbTotalNodes; i++)
-    // {
-    //     network.getNodes().at(i)->displayIdAdjacentNodes();
-    // }
+    //cerr<<endl<<endl;
 
     /* add idGatewayNode */
     for (int i = 0; i < nbExitGateways; i++)
     {
         int idGatewayNode; // the index of a gateway node
         cin >> idGatewayNode; cin.ignore();
-        // cerr<<"id gatewayNode : "<<idGatewayNode<<"!!!!!!!!!!!!!!!!!"<<endl;
         network.addIdGatewayNode(idGatewayNode);
         network.getNodes().at(idGatewayNode)->setIsGatewayNode(true);
     }
-    network.displayNodes();
+    // network.displayNodes();
     // network.displayIdGatewayNodes();
 
     // game loop
@@ -235,23 +223,24 @@ int main()
             int idRandomGateway;
             Node *gatewayNode;
             int counterGateways = 0;
+            int idAdjacentZone;
 
             do
             {
                 idRandomGateway = network.getIdGatewayNode()[rand() % nbExitGateways];
-                cerr<<"idRandomGateway : "<<idRandomGateway<<endl;
                 gatewayNode = network.getNodes().at(idRandomGateway);
                 counterGateways ++;
             }while(gatewayNode->getIdAdjacentNodes().empty() && counterGateways < network.getNbExitGateways()*10);
-            cerr<<"idRandomGateway : "<<idRandomGateway<<endl;
-            cerr<<"idRandomGatewayByPointer : "<<gatewayNode->getId()<<endl;
-            gatewayNode->displayIdAdjacentNodes();
+            // cerr<<"idRandomGateway : "<<idRandomGateway<<endl;
+            // cerr<<"idRandomGatewayByGetId : "<<gatewayNode->getId()<<endl;
+            // cerr<<"idAdjacentGateway : "<<gatewayNode->getIdAdjacentNodes()[0]<<endl;
+            // gatewayNode->displayIdAdjacentNodes();
 
-            cerr<<"idAdjacentGateway : "<<gatewayNode->getIdAdjacentNodes()[0]<<endl;
-            network.getNodes().at(idRandomGateway)->deleteIdAdjacentNodes(gatewayNode->getIdAdjacentNodes()[0]);
-            network.getNodes().at(gatewayNode->getIdAdjacentNodes()[0])->deleteIdAdjacentNodes(idRandomGateway);
+            idAdjacentZone = gatewayNode->getIdAdjacentNodes()[0];
+            network.getNodes().at(idRandomGateway)->deleteIdAdjacentNodes(idAdjacentZone);
+            network.getNodes().at(idAdjacentZone)->deleteIdAdjacentNodes(idRandomGateway);
 
-            cout<<idRandomGateway<<" "<< gatewayNode->getIdAdjacentNodes()[0]<<endl;
+            cout<<idRandomGateway<<" "<< idAdjacentZone<<endl;
         }
 
     }
