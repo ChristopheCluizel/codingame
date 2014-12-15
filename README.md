@@ -8,8 +8,8 @@ Problèmes résolus :
 
 Facile | Moyen | Difficile | Expert
 | :---: | :---: | :---: | :---: |
-Onboarding |||
-Le pouvoir de Thor | Skynet : le virus ||
+Onboarding | Skynet : le virus ||
+Le pouvoir de Thor | Détecteur de chaleur ||
 La descente |||
 Skynet : le saut |||
 Températures |||
@@ -18,7 +18,7 @@ ASCII Art |||
 Chuck Norris |||
 Défibrillateurs |||
 Cheveaux de course |||
-Terminé : 100% | 7% ||
+Terminé : 100% | 14% ||
 
 
 - Challenges :
