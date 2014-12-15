@@ -1,3 +1,3 @@
 #!/bin/bash
 
-g++ src/challenge/1.platinumRift.cpp -o ./bin/exe -std=c++11
+g++ src/solo/12.skynetFinal.cpp -o ./bin/exe -std=c++11
