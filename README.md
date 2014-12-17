@@ -1,28 +1,27 @@
-Codingame
-=========
+#Codingame
 
 Résolution des problèmes d'algorithmique de la plateforme [Codingame](http://www.codingame.com/).
 
 Problèmes résolus :
 - Solo :
 
-Facile | Moyen | Difficile | Expert
+| Facile | Moyen | Difficile | Expert
 | :---: | :---: | :---: | :---: |
-Onboarding | Skynet : le virus ||
-Le pouvoir de Thor | Détecteur de chaleur ||
-La descente |||
-Skynet : le saut |||
-Températures |||
-Mars Lander - niveau 1 |||
-ASCII Art |||
-Chuck Norris |||
-Défibrillateurs |||
-Cheveaux de course |||
-Terminé : 100% | 14% ||
+Onboarding`Cpp` `Scala` | Skynet : le virus `Cpp` ||
+Le pouvoir de Thor `Cpp` `Scala` | Détecteur de chaleur `Cpp` ||
+La descente `Cpp` |||
+Skynet : le saut `Cpp` |||
+Températures `Cpp` |||
+Mars Lander - niveau 1 `Cpp` |||
+ASCII Art `Cpp` |||
+Chuck Norris `Cpp` |||
+Défibrillateurs `Cpp` |||
+Cheveaux de course `Cpp` |||
+Terminé : `cpp`(100%), `Scala`(20%) | `Cpp`(14%) ||
 
 
 - Challenges :
 
 Challenge | Classement
 | :---: | :---:|
-PlatinumRift | 416/1080
+PlatinumRift `Cpp` | 416/1080
