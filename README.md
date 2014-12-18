@@ -10,14 +10,14 @@ Problèmes résolus :
 Onboarding`Cpp` `Scala` | Skynet : le virus `Cpp` ||
 Le pouvoir de Thor `Cpp` `Scala` | Détecteur de chaleur `Cpp` ||
 La descente `Cpp` `Scala` |||
-Skynet : le saut `Cpp` |||
+Skynet : le saut `Cpp` `Scala` |||
 Températures `Cpp` |||
 Mars Lander - niveau 1 `Cpp` |||
 ASCII Art `Cpp` |||
 Chuck Norris `Cpp` |||
 Défibrillateurs `Cpp` |||
 Cheveaux de course `Cpp` |||
-Terminé : `cpp`(100%), `Scala`(30%) | `Cpp`(14%) ||
+Terminé : `cpp`(100%), `Scala`(40%) | `Cpp`(14%) ||
 
 
 - Challenges :
