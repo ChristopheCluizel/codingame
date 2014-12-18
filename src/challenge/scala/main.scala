@@ -1,18 +1,30 @@
 import math._
 import scala.util._
+import scala.collection.mutable.ArrayBuffer
 
 class Node(val id: Int, val platinumSource: Int, var ownerId: Int, var pods: Array[Int]) {
     override def toString = f"Id : $id%d, platinumSource : $platinumSource%d, ownerId : $ownerId \n" + pods.mkString(", ")
+
+    def update(ownerId: Int, pods: Array[Int]){
+        this.ownerId = ownerId
+        pods.copyToArray(this.pods)
+    }
 }
 
 class Graph(val nbPlayers: Int, val myId: Int, val nbTotalZones: Int, val nbTotalLinks: Int) {
-    var nodes:Map[Int, Map[Int, Node]] = Map()
+    var nodes: Map[Int, Node] = Map()
+    var adjacence: ArrayBuffer[ArrayBuffer[Int]] = ArrayBuffer()
 
     override def toString = {
         var listNode = ""
-        for((id, adjacentNodes) <- nodes)
-            listNode += adjacentNodes.head.toString + "\n"
+        for(i <- nodes){
+            listNode += i.toString + "\n"
+        }
         listNode
+    }
+
+    def displayNeighbours(idZone: Int) {
+        Console.err.println(adjacence(idZone).mkString(", "))
     }
 }
 
@@ -30,13 +42,16 @@ object Player {
             // zoneId: this zone's ID (between 0 and nbZonesTotal-1)
             // platinumSource: the amount of Platinum this zone can provide per game turn
             val Array(zoneId, platinumSource) = for(i <- readLine split " ") yield i.toInt
-            graph.nodes += (zoneId -> Map(zoneId -> new Node(zoneId, platinumSource, -1, Array(0, 0, 0, 0))))
+            graph.adjacence += ArrayBuffer()
+            graph.nodes += (zoneId -> new Node(zoneId, platinumSource, -1, Array(0, 0, 0, 0)))
         }
-        Console.err.println(graph.toString)
 
         for(i <- 0 until nbLinksTotal) {
             val Array(zone1, zone2) = for(i <- readLine split " ") yield i.toInt
+            graph.adjacence(zone1) += zone2
+            graph.adjacence(zone2) += zone1
         }
+        // graph.displayNeighbours(0)
 
         // game loop
         while(true) {
@@ -49,7 +64,9 @@ object Player {
                 // podsp2: player 2's PODs on this zone (always 0 for a two player game)
                 // podsp3: player 3's PODs on this zone (always 0 for a two or three player game)
                 val Array(zoneId, ownerId, podsp0, podsp1, podsp2, podsp3) = for(i <- readLine split " ") yield i.toInt
+                graph.nodes(zoneId).update(ownerId, Array(podsp0, podsp1, podsp2, podsp3))
             }
+            //Console.err.println(graph.toString)
 
             println("WAIT") // first line for movement commands, second line for POD purchase (see the protocol in the statement for details)
             println("1 73")
