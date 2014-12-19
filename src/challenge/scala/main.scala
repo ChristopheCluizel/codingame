@@ -2,6 +2,7 @@ import math._
 import scala.util._
 import scala.collection.mutable.ArrayBuffer
 import scala.util.control.Breaks._
+import java.util.Random
 
 class Node(val id: Int, val platinumSource: Int, var ownerId: Int, var pods: Array[Int]) {
     override def toString = f"Id : $id%d, platinumSource : $platinumSource%d, ownerId : $ownerId \n" + pods.mkString(", ")
@@ -12,7 +13,8 @@ class Node(val id: Int, val platinumSource: Int, var ownerId: Int, var pods: Arr
     }
 
     def podsOnePlayerArePresent(idPlayer: Int): Boolean = if(pods(idPlayer) != 0) true else false
-    def isZoneFree: Boolean = if(pods.sum == 0) true else false
+    def isZoneFree(myId: Int): Boolean = if(myId != this.ownerId) true else false
+    def ownedBy(ownerId: Int): Boolean = if(ownerId == this.ownerId) true else false
 }
 
 class Graph(val nbPlayers: Int, val myId: Int, val nbTotalZones: Int, val nbTotalLinks: Int) {
@@ -33,7 +35,27 @@ class Graph(val nbPlayers: Int, val myId: Int, val nbTotalZones: Int, val nbTota
     }
 
     def move: String = {
-        "WAIT"
+        var orders = ""
+        nodes.keys.foreach{ i =>
+            orders += randomMove(i)
+        }
+        if(orders.length != 0) orders else "WAIT"
+    }
+
+    private def randomMove(idZoneFrom: Int): String = {
+        var orders = ""
+        if(nodes(idZoneFrom).ownedBy(myId) && nodes(idZoneFrom).podsOnePlayerArePresent(myId)){
+            // var neighboursFree = for{i <- adjacence(idZoneFrom) if(nodes(i).isZoneFree(myId)} yield i
+            var neighbours = adjacence(idZoneFrom)
+            Console.err.println("idZone : " + idZoneFrom + " -> " + neighbours.mkString(", "))
+            val rand = new Random(System.currentTimeMillis());
+            val random_index = rand.nextInt(neighbours.length);
+            Console.err.println("from : " + idZoneFrom + " to " + neighbours(random_index))
+            // nodes(neighbours(random_index)).pods(myId) += 1
+            // nodes(idZoneFrom).pods(myId) -= 1
+            orders += "1 " + idZoneFrom + " " + neighbours(random_index) + " "
+        }
+        orders
     }
 
     def invade: String = {
@@ -50,10 +72,10 @@ class Graph(val nbPlayers: Int, val myId: Int, val nbTotalZones: Int, val nbTota
     private def spawnNextToFreeZone(idZone: Int): String = {
         var orders = ""
         // Console.err.println(nodes(idZone).toString)
-        if(nodes(idZone).podsOnePlayerArePresent(myId)){
+        if(nodes(idZone).ownedBy(myId)){
             var neighbours = adjacence(idZone)
             // Console.err.println("idZone : " + idZone + " -> " + neighbours.mkString(", "))
-            breakable {for(j <- 0 until neighbours.length) if(nodes(neighbours(j)).isZoneFree) {
+            breakable {for(j <- 0 until neighbours.length) if(nodes(neighbours(j)).isZoneFree(myId)) {
                 // Console.err.println("Zone %d is free", nodes(neighbours(j)).id)
                 nodes(idZone).pods(myId) += 1
                 orders += "1 " + nodes(idZone).id + " "
