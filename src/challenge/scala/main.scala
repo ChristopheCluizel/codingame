@@ -34,10 +34,48 @@ class Graph(val nbPlayers: Int, val myId: Int, val nbTotalZones: Int, val nbTota
         Console.err.println(adjacence(idZone).mkString(", "))
     }
 
+    private def widthGraphMove(idZoneFrom: Int): String = {
+        var orders = ""
+        var queue = new scala.collection.mutable.Queue[Int]
+        var actualIdNode = 0
+        var markedNode: ArrayBuffer[Int] = ArrayBuffer()
+        var idTarget = 0
+        var fathers: Map[Int, Int] = Map()
+        var idZoneFather = 0
+
+        if(nodes(idZoneFrom).ownedBy(myId) && nodes(idZoneFrom).podsOnePlayerArePresent(myId)){
+            Console.err.println("idZoneFrom : " + idZoneFrom)
+            queue += idZoneFrom
+            breakable { while(!queue.isEmpty){
+                actualIdNode = queue.dequeue
+                markedNode += actualIdNode
+                if(nodes(actualIdNode).isZoneFree(myId)) {
+                    idTarget = actualIdNode
+                    Console.err.println("idTarget : " + idTarget)
+                    //Console.err.println(fathers.mkString(", "))
+                    idZoneFather = idTarget
+                    while(fathers(idZoneFather) != idZoneFrom){
+                        idZoneFather = fathers(idZoneFather)
+                    }
+                    Console.err.println("idZoneFrom : " + idZoneFrom + " -> father : " + idZoneFather)
+                    break
+                }
+                //Console.err.println("Neighbours : " + adjacence(actualIdNode).mkString(", "))
+                for(i <- adjacence(actualIdNode)){
+                    if(!markedNode.contains(i) && !queue.contains(i) && nodes(i).isZoneFree(myId)) queue += i //!!!!!!!!!!!!!!!!!!!!!!!!!
+                    fathers += (i -> actualIdNode)
+                }
+            }}
+
+            orders += "1 " + idZoneFrom + " " + idZoneFather + " "
+        }
+        orders
+    }
+
     def move: String = {
         var orders = ""
         nodes.keys.foreach{ i =>
-            orders += randomMove(i)
+            orders += widthGraphMove(i)
         }
         if(orders.length != 0) orders else "WAIT"
     }
@@ -47,12 +85,10 @@ class Graph(val nbPlayers: Int, val myId: Int, val nbTotalZones: Int, val nbTota
         if(nodes(idZoneFrom).ownedBy(myId) && nodes(idZoneFrom).podsOnePlayerArePresent(myId)){
             // var neighboursFree = for{i <- adjacence(idZoneFrom) if(nodes(i).isZoneFree(myId)} yield i
             var neighbours = adjacence(idZoneFrom)
-            Console.err.println("idZone : " + idZoneFrom + " -> " + neighbours.mkString(", "))
+            // Console.err.println("idZone : " + idZoneFrom + " -> " + neighbours.mkString(", "))
             val rand = new Random(System.currentTimeMillis());
             val random_index = rand.nextInt(neighbours.length);
-            Console.err.println("from : " + idZoneFrom + " to " + neighbours(random_index))
-            // nodes(neighbours(random_index)).pods(myId) += 1
-            // nodes(idZoneFrom).pods(myId) -= 1
+            // Console.err.println("from : " + idZoneFrom + " to " + neighbours(random_index))
             orders += "1 " + idZoneFrom + " " + neighbours(random_index) + " "
         }
         orders
