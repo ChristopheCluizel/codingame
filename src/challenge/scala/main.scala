@@ -1,6 +1,7 @@
 import math._
 import scala.util._
 import scala.collection.mutable.ArrayBuffer
+import scala.util.control.Breaks._
 
 class Node(val id: Int, val platinumSource: Int, var ownerId: Int, var pods: Array[Int]) {
     override def toString = f"Id : $id%d, platinumSource : $platinumSource%d, ownerId : $ownerId \n" + pods.mkString(", ")
@@ -9,11 +10,15 @@ class Node(val id: Int, val platinumSource: Int, var ownerId: Int, var pods: Arr
         this.ownerId = ownerId
         pods.copyToArray(this.pods)
     }
+
+    def podsOnePlayerArePresent(idPlayer: Int): Boolean = if(pods(idPlayer) != 0) true else false
+    def isZoneFree: Boolean = if(pods.sum == 0) true else false
 }
 
 class Graph(val nbPlayers: Int, val myId: Int, val nbTotalZones: Int, val nbTotalLinks: Int) {
     var nodes: Map[Int, Node] = Map()
     var adjacence: ArrayBuffer[ArrayBuffer[Int]] = ArrayBuffer()
+    var myPlatinum = 0
 
     override def toString = {
         var listNode = ""
@@ -25,6 +30,40 @@ class Graph(val nbPlayers: Int, val myId: Int, val nbTotalZones: Int, val nbTota
 
     def displayNeighbours(idZone: Int) {
         Console.err.println(adjacence(idZone).mkString(", "))
+    }
+
+    def move: String = {
+        "WAIT"
+    }
+
+    def invade: String = {
+        var orders = ""
+
+        nodes.keys.foreach{ i =>
+            if(myPlatinum >= 20){
+                orders += spawnNextToFreeZone(i)
+            }
+        }
+        if(orders.length != 0) orders else "WAIT"
+    }
+
+    private def spawnNextToFreeZone(idZone: Int): String = {
+        var orders = ""
+        // Console.err.println(nodes(idZone).toString)
+        if(nodes(idZone).podsOnePlayerArePresent(myId)){
+            var neighbours = adjacence(idZone)
+            // Console.err.println("idZone : " + idZone + " -> " + neighbours.mkString(", "))
+            breakable {for(j <- 0 until neighbours.length) if(nodes(neighbours(j)).isZoneFree) {
+                // Console.err.println("Zone %d is free", nodes(neighbours(j)).id)
+                nodes(idZone).pods(myId) += 1
+                orders += "1 " + nodes(idZone).id + " "
+                myPlatinum -= 20
+                // Console.err.println(orders)
+                break
+            }}
+        }
+
+        orders
     }
 }
 
@@ -53,9 +92,9 @@ object Player {
         }
         // graph.displayNeighbours(0)
 
-        // game loop
         while(true) {
             val myPlatinum = readInt // my available Platinum
+            graph.myPlatinum = myPlatinum
             for(i <- 0 until nbZonesTotal) {
                 // zoneId: this zone's ID
                 // ownerId: the player who owns this zone (-1 otherwise)
@@ -68,8 +107,8 @@ object Player {
             }
             //Console.err.println(graph.toString)
 
-            println("WAIT") // first line for movement commands, second line for POD purchase (see the protocol in the statement for details)
-            println("1 73")
+            println(graph.move) // first line for movement commands, second line for POD purchase (see the protocol in the statement for details)
+            println(graph.invade)
         }
     }
 }
