@@ -106,7 +106,10 @@ class Graph(val nbPlayers: Int, val myId: Int, val nbTotalZones: Int, val nbTota
     def move: String = {
         var orders = ""
         nodes.keys.foreach{ i =>
-            orders += widthGraphMove(i)
+            while(nodes(i).pods(myId) > 0){
+                orders += widthGraphMove(i)
+                if(!orders.isEmpty) nodes(i).pods(myId) -= 1
+            }
         }
         if(orders.length != 0) orders else "WAIT"
     }
@@ -144,7 +147,6 @@ class Graph(val nbPlayers: Int, val myId: Int, val nbTotalZones: Int, val nbTota
             // Console.err.println("idZone : " + idZone + " -> " + neighbours.mkString(", "))
             breakable {for(j <- 0 until neighbours.length) if(nodes(neighbours(j)).isZoneFree(myId)) {
                 // Console.err.println("Zone %d is free", nodes(neighbours(j)).id)
-                nodes(idZone).pods(myId) += 1
                 orders += "1 " + nodes(idZone).id + " "
                 myPlatinum -= 20
                 // Console.err.println(orders)
