@@ -44,29 +44,31 @@ class Graph(val nbPlayers: Int, val myId: Int, val nbTotalZones: Int, val nbTota
         var idZoneFather = 0
 
         if(nodes(idZoneFrom).ownedBy(myId) && nodes(idZoneFrom).podsOnePlayerArePresent(myId)){
-            Console.err.println("idZoneFrom : " + idZoneFrom)
+            // Console.err.println("idZoneFrom : " + idZoneFrom)
             queue += idZoneFrom
             breakable { while(!queue.isEmpty){
                 actualIdNode = queue.dequeue
                 markedNode += actualIdNode
                 if(nodes(actualIdNode).isZoneFree(myId)) {
                     idTarget = actualIdNode
-                    Console.err.println("idTarget : " + idTarget)
+                    // Console.err.println("idTarget : " + idTarget)
                     //Console.err.println(fathers.mkString(", "))
                     idZoneFather = idTarget
                     while(fathers(idZoneFather) != idZoneFrom){
                         idZoneFather = fathers(idZoneFather)
                     }
-                    Console.err.println("idZoneFrom : " + idZoneFrom + " -> father : " + idZoneFather)
+                    // Console.err.println("idZoneFrom : " + idZoneFrom + " -> father : " + idZoneFather + " dest : " + idTarget)
+                    // Console.err.println(nodes(actualIdNode).toString)
                     break
                 }
                 //Console.err.println("Neighbours : " + adjacence(actualIdNode).mkString(", "))
                 for(i <- adjacence(actualIdNode)){
-                    if(!markedNode.contains(i) && !queue.contains(i) && nodes(i).isZoneFree(myId)) queue += i //!!!!!!!!!!!!!!!!!!!!!!!!!
-                    fathers += (i -> actualIdNode)
+                    if(!markedNode.contains(i) && !queue.contains(i)){
+                        queue += i
+                        fathers += (i -> actualIdNode)
+                    }
                 }
             }}
-
             orders += "1 " + idZoneFrom + " " + idZoneFather + " "
         }
         orders
