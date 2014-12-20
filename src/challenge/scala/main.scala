@@ -14,13 +14,31 @@ class Node(val id: Int, val platinumSource: Int, var ownerId: Int, var pods: Arr
 
     def podsOnePlayerArePresent(idPlayer: Int): Boolean = if(pods(idPlayer) != 0) true else false
     def isZoneFree(myId: Int): Boolean = if(myId != this.ownerId) true else false
+    def isZoneWithPlatinum: Boolean = if(platinumSource > 0) true else false
     def ownedBy(ownerId: Int): Boolean = if(ownerId == this.ownerId) true else false
 }
 
 class Graph(val nbPlayers: Int, val myId: Int, val nbTotalZones: Int, val nbTotalLinks: Int) {
     var nodes: Map[Int, Node] = Map()
+    var platinumZones: ArrayBuffer[Int] = ArrayBuffer()
     var adjacence: ArrayBuffer[ArrayBuffer[Int]] = ArrayBuffer()
     var myPlatinum = 0
+
+    def isAllPlatinumZonesOwned: Boolean = {
+        for(i <- platinumZones){
+            if(!nodes(i).ownedBy(myId)) return false
+        }
+        return true
+    }
+
+    def isHalfPlatinumZonesOwned: Boolean = {
+        var nbPlatinumZonesOwned = 0
+        for(i <- platinumZones){
+            if(nodes(i).ownerId == myId) nbPlatinumZonesOwned +=1
+        }
+        // Console.err.println("nbPlatinumZonesOwned : " + nbPlatinumZonesOwned)
+        return (nbPlatinumZonesOwned >= (platinumZones.length / 2))
+    }
 
     override def toString = {
         var listNode = ""
@@ -44,24 +62,35 @@ class Graph(val nbPlayers: Int, val myId: Int, val nbTotalZones: Int, val nbTota
         var idZoneFather = 0
 
         if(nodes(idZoneFrom).ownedBy(myId) && nodes(idZoneFrom).podsOnePlayerArePresent(myId)){
-            // Console.err.println("idZoneFrom : " + idZoneFrom)
             queue += idZoneFrom
             breakable { while(!queue.isEmpty){
                 actualIdNode = queue.dequeue
                 markedNode += actualIdNode
-                if(nodes(actualIdNode).isZoneFree(myId)) {
-                    idTarget = actualIdNode
-                    // Console.err.println("idTarget : " + idTarget)
-                    //Console.err.println(fathers.mkString(", "))
-                    idZoneFather = idTarget
-                    while(fathers(idZoneFather) != idZoneFrom){
-                        idZoneFather = fathers(idZoneFather)
+                if(!isHalfPlatinumZonesOwned){
+                    if(nodes(actualIdNode).isZoneFree(myId) && nodes(actualIdNode).isZoneWithPlatinum) {
+                        // Console.err.println("Reste du platinum !!!")
+                        idTarget = actualIdNode
+                        idZoneFather = idTarget
+                        while(fathers(idZoneFather) != idZoneFrom){
+                            idZoneFather = fathers(idZoneFather)
+                        }
+                        // Console.err.println("idZoneFrom : " + idZoneFrom + " -> father : " + idZoneFather + " dest : " + idTarget)
+                        break
                     }
-                    // Console.err.println("idZoneFrom : " + idZoneFrom + " -> father : " + idZoneFather + " dest : " + idTarget)
-                    // Console.err.println(nodes(actualIdNode).toString)
-                    break
                 }
-                //Console.err.println("Neighbours : " + adjacence(actualIdNode).mkString(", "))
+                else{
+                    if(nodes(actualIdNode).isZoneFree(myId)) {
+                        // Console.err.println("Plus de platinum !!!")
+                        idTarget = actualIdNode
+                        idZoneFather = idTarget
+                        while(fathers(idZoneFather) != idZoneFrom){
+                            idZoneFather = fathers(idZoneFather)
+                        }
+                        // Console.err.println("idZoneFrom : " + idZoneFrom + " -> father : " + idZoneFather + " dest : " + idTarget)
+                        break
+                    }
+                }
+
                 for(i <- adjacence(actualIdNode)){
                     if(!markedNode.contains(i) && !queue.contains(i)){
                         queue += i
@@ -143,7 +172,9 @@ object Player {
             val Array(zoneId, platinumSource) = for(i <- readLine split " ") yield i.toInt
             graph.adjacence += ArrayBuffer()
             graph.nodes += (zoneId -> new Node(zoneId, platinumSource, -1, Array(0, 0, 0, 0)))
+            if(platinumSource > 0) graph.platinumZones += zoneId
         }
+        // Console.err.println(graph.platinumZones.mkString(", "))
 
         for(i <- 0 until nbLinksTotal) {
             val Array(zone1, zone2) = for(i <- readLine split " ") yield i.toInt
