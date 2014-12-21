@@ -14,6 +14,7 @@ class Node(val id: Int, val platinumSource: Int, var ownerId: Int, var pods: Arr
 
     def podsOnePlayerArePresent(idPlayer: Int): Boolean = if(pods(idPlayer) != 0) true else false
     def isZoneFree(myId: Int): Boolean = if(myId != this.ownerId) true else false
+    def isZoneWithEnemy(myId: Int): Boolean = if(isZoneFree(myId) && ownerId != -1) true else false
     def isZoneWithPlatinum: Boolean = if(platinumSource > 0) true else false
     def ownedBy(ownerId: Int): Boolean = if(ownerId == this.ownerId) true else false
 }
@@ -60,6 +61,7 @@ class Graph(val nbPlayers: Int, val myId: Int, val nbTotalZones: Int, val nbTota
         var idTarget = 0
         var fathers: Map[Int, Int] = Map()
         var idZoneFather = 0
+        var zoneConditionsToBeATarget = false
 
         if(nodes(idZoneFrom).ownedBy(myId) && nodes(idZoneFrom).podsOnePlayerArePresent(myId)){
             queue += idZoneFrom
@@ -67,19 +69,12 @@ class Graph(val nbPlayers: Int, val myId: Int, val nbTotalZones: Int, val nbTota
                 actualIdNode = queue.dequeue
                 markedNode += actualIdNode
                 if(!isHalfPlatinumZonesOwned){
-                    if(nodes(actualIdNode).isZoneFree(myId) && nodes(actualIdNode).isZoneWithPlatinum) {
-                        // Console.err.println("Reste du platinum !!!")
-                        idTarget = actualIdNode
-                        idZoneFather = idTarget
-                        while(fathers(idZoneFather) != idZoneFrom){
-                            idZoneFather = fathers(idZoneFather)
-                        }
-                        // Console.err.println("idZoneFrom : " + idZoneFrom + " -> father : " + idZoneFather + " dest : " + idTarget)
-                        break
-                    }
+                    zoneConditionsToBeATarget = nodes(actualIdNode).isZoneFree(myId) && nodes(actualIdNode).isZoneWithPlatinum
                 }
                 else{
-                    if(nodes(actualIdNode).isZoneFree(myId)) {
+                     zoneConditionsToBeATarget = nodes(actualIdNode).isZoneFree(myId)
+                }
+                if(zoneConditionsToBeATarget) {
                         // Console.err.println("Plus de platinum !!!")
                         idTarget = actualIdNode
                         idZoneFather = idTarget
@@ -89,7 +84,6 @@ class Graph(val nbPlayers: Int, val myId: Int, val nbTotalZones: Int, val nbTota
                         // Console.err.println("idZoneFrom : " + idZoneFrom + " -> father : " + idZoneFather + " dest : " + idTarget)
                         break
                     }
-                }
 
                 for(i <- adjacence(actualIdNode)){
                     if(!markedNode.contains(i) && !queue.contains(i)){
@@ -144,14 +138,27 @@ class Graph(val nbPlayers: Int, val myId: Int, val nbTotalZones: Int, val nbTota
         // Console.err.println(nodes(idZone).toString)
         if(nodes(idZone).ownedBy(myId)){
             var neighbours = adjacence(idZone)
-            // Console.err.println("idZone : " + idZone + " -> " + neighbours.mkString(", "))
-            breakable {for(j <- 0 until neighbours.length) if(nodes(neighbours(j)).isZoneFree(myId)) {
-                // Console.err.println("Zone %d is free", nodes(neighbours(j)).id)
-                orders += "1 " + nodes(idZone).id + " "
-                myPlatinum -= 20
-                // Console.err.println(orders)
-                break
-            }}
+            var neighboursWithEnemy = for{i <- neighbours if(nodes(i).isZoneWithEnemy(myId))}yield i
+            if(neighboursWithEnemy.length != 0){
+                breakable {for(j <- 0 until neighboursWithEnemy.length) if(nodes(neighboursWithEnemy(j)).isZoneFree(myId)) {
+                    // Console.err.println("Zone %d is free", nodes(neighbours(j)).id)
+                    orders += "1 " + idZone + " "
+                    myPlatinum -= 20
+                    // Console.err.println(orders)
+                    break
+                }}
+            }
+            // else
+            // {
+            //     // Console.err.println("idZone : " + idZone + " -> " + neighbours.mkString(", "))
+            //     breakable {for(j <- 0 until neighbours.length) if(nodes(neighbours(j)).isZoneFree(myId)) {
+            //         // Console.err.println("Zone %d is free", nodes(neighbours(j)).id)
+            //         orders += "1 " + nodes(idZone).id + " "
+            //         myPlatinum -= 20
+            //         // Console.err.println(orders)
+            //         break
+            //     }}
+            // }
         }
 
         orders
