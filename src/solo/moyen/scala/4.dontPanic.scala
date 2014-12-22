@@ -68,10 +68,10 @@ object Player {
                 Console.err.println(game.toString)
             }
 
-            // Write an action using println
-            // To debug: Console.err.println("Debug messages...")
-
-            println("WAIT") // action: WAIT or BLOCK
+            if(clonefloor == -1) println("WAIT")
+            else {
+                if(direction == game.elevators(clonefloor).direction) println("WAIT") else println("BLOCK")
+            }
         }
     }
 }
