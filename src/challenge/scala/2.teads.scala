@@ -5,30 +5,29 @@ import scala.collection.mutable.ArrayBuffer
 
 class Graph[X](nbNodes: Int) {
     var nodes: Map[Int, X] = Map()
-    var adjacenceMatrix = ofDim[Int](nbNodes, nbNodes)
+    var adjacence: Map[Int, ArrayBuffer[Int]] = Map()
 
-    for(i <- 0 until nbNodes) {
-        for(j <- 0 until nbNodes) {
-            adjacenceMatrix(i)(j) = 0
-        }
+    def addNode(key: Int, node: X) = {
+        nodes += (key -> node)
+        adjacence += (key -> new ArrayBuffer())
     }
-
-    def addNode(key: Int, node: X) = nodes += (key -> node)
-    def addEdge(key1 :Int, key2:Int, value: Int) = adjacenceMatrix(key1)(key2) = value
+    def addEdge(key1 :Int, key2:Int, value: Int) = {
+        adjacence(key1) += (key2)
+    }
     def isEmpty: Boolean = nodes.isEmpty
     def nodePresent(key: Int): Boolean = nodes.contains(key)
-    def edgePresent(key1: Int, key2: Int): Boolean = adjacenceMatrix(key1)(key2) > 0
+    def edgePresent(key1: Int, key2: Int): Boolean = adjacence(key1).contains(key2)
     def getPredecessors(key: Int): ArrayBuffer[Int] = {
         var predecessors: ArrayBuffer[Int] = ArrayBuffer()
-        for(i <- 0 until nbNodes) {
-            if(adjacenceMatrix(i)(key) > 0) predecessors += i
+        for(i <- 0 until adjacence.size) {
+            if(adjacence(i).contains(key)) predecessors += adjacence(i)(0)
         }
         predecessors
     }
     def getSuccessors(key: Int): ArrayBuffer[Int] = {
         var successors: ArrayBuffer[Int] = ArrayBuffer()
-        for(j <- 0 until nbNodes) {
-            if(adjacenceMatrix(key)(j) > 0) successors += j
+        for(j <- adjacence(key)) {
+            successors += j
         }
         successors
     }
@@ -99,7 +98,6 @@ object Solution {
         graph.nodes.keys.foreach {i =>
             eccentricity += (i -> graph.calculateEccentricityOf(i))
         }
-        // eccentricityMin = eccentricity.minBy(_._2)._1
         eccentricity.keys.foreach { i =>
             if(eccentricity(i) < eccentricityMin) {
                  eccentricityMin = eccentricity(i)
