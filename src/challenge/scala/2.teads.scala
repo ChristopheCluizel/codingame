@@ -4,18 +4,16 @@ import Array._
 import scala.collection.mutable.ArrayBuffer
 
 class Graph[X](nbNodes: Int) {
-    var nodes: Map[Int, X] = Map()
     var adjacence: Map[Int, ArrayBuffer[Int]] = Map()
 
     def addNode(key: Int, node: X) = {
-        nodes += (key -> node)
         adjacence += (key -> new ArrayBuffer())
     }
     def addEdge(key1 :Int, key2:Int, value: Int) = {
         adjacence(key1) += (key2)
     }
-    def isEmpty: Boolean = nodes.isEmpty
-    def nodePresent(key: Int): Boolean = nodes.contains(key)
+    def isEmpty: Boolean = adjacence.isEmpty
+    def nodePresent(key: Int): Boolean = adjacence.contains(key)
     def edgePresent(key1: Int, key2: Int): Boolean = adjacence(key1).contains(key2)
     def getPredecessors(key: Int): ArrayBuffer[Int] = {
         var predecessors: ArrayBuffer[Int] = ArrayBuffer()
@@ -58,7 +56,7 @@ class Graph[X](nbNodes: Int) {
         var eccentricity = 0
         var distances: scala.collection.mutable.Map[Int, Int] = scala.collection.mutable.Map()
 
-        nodes.keys.foreach(i => distances += (i -> -1))
+        adjacence.keys.foreach(i => distances += (i -> -1))
 
         distances.update(key, 0)
         queue += key
@@ -73,8 +71,8 @@ class Graph[X](nbNodes: Int) {
         eccentricity
     }
 
-    def display = nodes.keys.foreach {i =>
-        println("key : " + i + ", Node : " + nodes(i).toString + ", Successors : " + getSuccessors(i).mkString(", ") + ", Predecessors : " + getPredecessors(i).mkString(", "))
+    def display = adjacence.keys.foreach {i =>
+        println("key : " + i + ", Node : " + adjacence(i).toString + ", Successors : " + getSuccessors(i).mkString(", ") + ", Predecessors : " + getPredecessors(i).mkString(", "))
     }
 }
 
@@ -83,7 +81,7 @@ object Solution {
         var nbNodes = readInt
         nbNodes += 1
         var graph = new Graph[Int](nbNodes)
-        var eccentricity: Map[Int, Int] = Map()
+        var eccentricity = 0
         var radius = 0
         var eccentricityMin = 1000000
 
@@ -95,18 +93,13 @@ object Solution {
             graph.addEdge(key2, key1, 1)
         }
         // graph.display
-        graph.nodes.keys.foreach {i =>
-            eccentricity += (i -> graph.calculateEccentricityOf(i))
+        graph.adjacence.keys.foreach {i =>
+            eccentricity = graph.calculateEccentricityOf(i)
+            if(eccentricity < eccentricityMin) eccentricityMin = eccentricity
         }
-        eccentricity.keys.foreach { i =>
-            if(eccentricity(i) < eccentricityMin) {
-                 eccentricityMin = eccentricity(i)
-                 radius = i
-            }
-            // Console.err.println("key : " + i + " -> eccentricity : " + eccentricity(i))
-        }
+
+        // Console.err.println("key : " + i + " -> eccentricity : " + eccentricity(i))
         // Console.err.println("eccentricityMin " + eccentricityMin)
-        // Console.err.println("radius " + radius)
 
         println(eccentricityMin)
     }
