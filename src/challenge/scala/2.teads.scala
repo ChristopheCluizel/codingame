@@ -110,13 +110,7 @@ class Graph[X](nbNodes: Int) extends TicToc{
         }
         predecessors
     }
-    def getSuccessors(key: Int): ArrayBuffer[Int] = {
-        var successors: ArrayBuffer[Int] = ArrayBuffer()
-        for(j <- adjacence(key)) {
-            successors += j
-        }
-        successors
-    }
+    def getSuccessors(key: Int): ArrayBuffer[Int] = adjacence(key)
 
     def breadthFirstSearch(key: Int): String = {
         var queue = new scala.collection.mutable.Queue[Int]
