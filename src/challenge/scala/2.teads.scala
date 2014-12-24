@@ -2,6 +2,9 @@ import math._
 import scala.util._
 import Array._
 import scala.collection.mutable.ArrayBuffer
+import java.io.File
+import java.io.FileReader
+import java.io.BufferedReader
 /**
  * TicToc allows for easy benchmarking of different parts in source code.
  * Just inherit the TicToc trait, then start a time measurement with tic,
@@ -160,7 +163,12 @@ class Graph[X](nbNodes: Int) extends TicToc{
 
 object Solution extends TicToc {
     def main(args: Array[String]) {
-        var nbNodes = readInt
+        var file = new File("../../../ressource/inputTeads/Test_7_input.txt")
+        var fr = new FileReader(file)
+        var br = new BufferedReader(fr)
+        var s: String = ""
+
+        var nbNodes = br.readLine.toInt
         nbNodes += 1
         var graph = new Graph[Int](nbNodes)
         var eccentricity = 0
@@ -169,7 +177,7 @@ object Solution extends TicToc {
 
         tic
         for(i <- 0 until nbNodes - 1){
-            val Array(key1, key2) = for(i <- readLine split " ") yield i.toInt
+            val Array(key1, key2) = for(i <- br.readLine split " ") yield i.toInt
             if(!graph.nodePresent(key1)) graph.addNode(key1, key1)
             if(!graph.nodePresent(key2)) graph.addNode(key2, key2)
             graph.addEdge(key1, key2, 1)
