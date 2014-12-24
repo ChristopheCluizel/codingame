@@ -186,13 +186,18 @@ object Solution extends TicToc {
         toc("Construction of the graph")
         // graph.display
 
-        tic
+        var counter = 0
         graph.adjacence.keys.foreach {i =>
+            tic
             eccentricity = graph.calculateEccentricityOf(i)
+            toc("Calculation of 1 eccentricity")
             if(eccentricity < eccentricityMin) eccentricityMin = eccentricity
+            counter +=1
+            // Console.err.println("counter : " + counter)
+            Console.err.println(outLines)
         }
-        toc("Calculation of eccentricity")
-        Console.err.println(outLines)
+
+        // Console.err.println(outLines)
 
         // Console.err.println("key : " + i + " -> eccentricity : " + eccentricity(i))
         // Console.err.println("eccentricityMin " + eccentricityMin)
