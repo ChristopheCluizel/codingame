@@ -24,6 +24,8 @@ class Graph(val nbPlayers: Int, val myId: Int, val nbTotalZones: Int, val nbTota
     var platinumZones: ArrayBuffer[Int] = ArrayBuffer()
     var adjacence: ArrayBuffer[ArrayBuffer[Int]] = ArrayBuffer()
     var myPlatinum = 0
+    var idZoneMySpawn = 0
+    var idZoneEnemySpawn = 0
 
     def isAllPlatinumZonesOwned: Boolean = {
         for(i <- platinumZones){
@@ -206,6 +208,7 @@ object Player {
         }
         // graph.displayNeighbours(0)
 
+        var firstTurn = true
         while(true) {
             val myPlatinum = readInt // my available Platinum
             graph.myPlatinum = myPlatinum
@@ -218,6 +221,15 @@ object Player {
                 // podsp3: player 3's PODs on this zone (always 0 for a two or three player game)
                 val Array(zoneId, ownerId, podsp0, podsp1, podsp2, podsp3) = for(i <- readLine split " ") yield i.toInt
                 graph.nodes(zoneId).update(ownerId, Array(podsp0, podsp1, podsp2, podsp3))
+            }
+            if(firstTurn) {
+                for(i <- 0 until nbZonesTotal) {
+                    if(graph.nodes(i).ownedBy(myId)) graph.idZoneMySpawn = i
+                    if(graph.nodes(i).isZoneWithEnemy(myId)) graph.idZoneEnemySpawn = i
+                }
+                // Console.err.println("my spawn : " + graph.idZoneMySpawn)
+                // Console.err.println("his spawn : " + graph.idZoneEnemySpawn)
+                firstTurn = false
             }
             //Console.err.println(graph.toString)
 
