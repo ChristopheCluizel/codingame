@@ -116,10 +116,11 @@ class Graph(val nbPlayers: Int, val myId: Int, val nbTotalZones: Int, val nbTota
     def move: String = {
         var orders = ""
         nodes.keys.foreach{ i =>
-            while(nodes(i).pods(myId) > 0){
+            breakable {while(nodes(i).pods(myId) > 0){
+                if(i == idZoneMySpawn && nodes(i).pods(myId) <= 5) break
                 orders += widthGraphMove(i)
                 if(!orders.isEmpty) nodes(i).pods(myId) -= 1
-            }
+            }}
         }
         if(orders.length != 0) orders else "WAIT"
     }
