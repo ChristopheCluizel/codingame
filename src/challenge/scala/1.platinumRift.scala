@@ -32,13 +32,20 @@ class Graph(val nbPlayers: Int, val myId: Int, val nbTotalZones: Int, val nbTota
         return true
     }
 
+    def idAdjacentZoneFree(idZone: Int): Int = {
+        for(i <- adjacence(idZone)){
+            if(nodes(i).ownerId != myId) return i
+        }
+        return -42
+    }
+
     def isHalfPlatinumZonesOwned: Boolean = {
         var nbPlatinumZonesOwned = 0
         for(i <- platinumZones){
             if(nodes(i).ownerId == myId) nbPlatinumZonesOwned +=1
         }
         // Console.err.println("nbPlatinumZonesOwned : " + nbPlatinumZonesOwned)
-        return (nbPlatinumZonesOwned >= (platinumZones.length / 2))
+        return (nbPlatinumZonesOwned >= (platinumZones.length / 3))
     }
 
     override def toString = {
@@ -64,34 +71,41 @@ class Graph(val nbPlayers: Int, val myId: Int, val nbTotalZones: Int, val nbTota
         var zoneConditionsToBeATarget = false
 
         if(nodes(idZoneFrom).ownedBy(myId) && nodes(idZoneFrom).podsOnePlayerArePresent(myId)){
-            queue += idZoneFrom
-            breakable { while(!queue.isEmpty){
-                actualIdNode = queue.dequeue
-                markedNode += actualIdNode
-                if(!isHalfPlatinumZonesOwned){
-                    zoneConditionsToBeATarget = nodes(actualIdNode).isZoneFree(myId) && nodes(actualIdNode).isZoneWithPlatinum
-                }
-                else{
-                     zoneConditionsToBeATarget = nodes(actualIdNode).isZoneFree(myId)
-                }
-                if(zoneConditionsToBeATarget) {
-                        // Console.err.println("Plus de platinum !!!")
-                        idTarget = actualIdNode
-                        idZoneFather = idTarget
-                        while(fathers(idZoneFather) != idZoneFrom){
-                            idZoneFather = fathers(idZoneFather)
+            var idZoneFreeNextToActualZone = idAdjacentZoneFree(idZoneFrom)
+            if(idZoneFreeNextToActualZone != -42) {
+                idZoneFather = idZoneFreeNextToActualZone
+            }
+            else {
+                queue += idZoneFrom
+                breakable { while(!queue.isEmpty){
+                    actualIdNode = queue.dequeue
+                    markedNode += actualIdNode
+                    if(!isHalfPlatinumZonesOwned){
+                        zoneConditionsToBeATarget = nodes(actualIdNode).isZoneFree(myId) && nodes(actualIdNode).isZoneWithPlatinum
+                    }
+                    else{
+                         zoneConditionsToBeATarget = nodes(actualIdNode).isZoneFree(myId)
+                    }
+                    if(zoneConditionsToBeATarget) {
+                            // Console.err.println("Plus de platinum !!!")
+                            idTarget = actualIdNode
+                            idZoneFather = idTarget
+                            while(fathers(idZoneFather) != idZoneFrom){
+                                idZoneFather = fathers(idZoneFather)
+                            }
+                            // Console.err.println("idZoneFrom : " + idZoneFrom + " -> father : " + idZoneFather + " dest : " + idTarget)
+                            break
                         }
-                        // Console.err.println("idZoneFrom : " + idZoneFrom + " -> father : " + idZoneFather + " dest : " + idTarget)
-                        break
-                    }
 
-                for(i <- adjacence(actualIdNode)){
-                    if(!markedNode.contains(i) && !queue.contains(i)){
-                        queue += i
-                        fathers += (i -> actualIdNode)
+                    for(i <- adjacence(actualIdNode)){
+                        if(!markedNode.contains(i) && !queue.contains(i)){
+                            queue += i
+                            fathers += (i -> actualIdNode)
+                        }
                     }
-                }
-            }}
+                }}
+            }
+            nodes(idZoneFather).ownerId = myId
             orders += "1 " + idZoneFrom + " " + idZoneFather + " "
         }
         orders
