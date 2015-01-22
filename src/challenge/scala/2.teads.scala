@@ -104,9 +104,10 @@ class Graph[X](nbNodes: Int) extends TicToc{
         adjacence(key1) += (key2)
     }
     def isEmpty: Boolean = adjacence.isEmpty
+    def successorIsEmpty(key: Int): Boolean = adjacence(key).size == 1
     def nodePresent(key: Int): Boolean = adjacence.contains(key)
     def edgePresent(key1: Int, key2: Int): Boolean = adjacence(key1).contains(key2)
-    def getPredecessors(key: Int): ArrayBuffer[Int] = {
+    def getPredecessors(key: Int): ArrayBuffer[Int] = {         // this function fails
         var predecessors: ArrayBuffer[Int] = ArrayBuffer()
         for(i <- 0 until adjacence.size) {
             if(adjacence(i).contains(key)) predecessors += adjacence(i)(0)
@@ -156,14 +157,31 @@ class Graph[X](nbNodes: Int) extends TicToc{
         eccentricity
     }
 
+    def shedTheLeaves() = {
+        var leaves: ArrayBuffer[Int] = ArrayBuffer()
+        adjacence.keys.foreach {i =>
+            if(successorIsEmpty(i)) {
+                // println(i + " isEmpty")
+                adjacence -= i
+                leaves += i
+            }
+        }
+        for(j <- 0 until leaves.size) {
+            adjacence.keys.foreach {i =>
+                if(adjacence(i).contains(leaves(j)))
+                adjacence(i) -= leaves(j)
+            }
+        }
+    }
+
     def display = adjacence.keys.foreach {i =>
-        println("key : " + i + ", Node : " + adjacence(i).toString + ", Successors : " + getSuccessors(i).mkString(", ") + ", Predecessors : " + getPredecessors(i).mkString(", "))
+        println("key : " + i + ", Node : " + adjacence(i).toString + ", Successors : " + getSuccessors(i).mkString(", ")) //+ ", Predecessors : " + getPredecessors(i).mkString(", "))
     }
 }
 
 object Solution extends TicToc {
     def main(args: Array[String]) {
-        var file = new File("../../../ressource/inputTeads/Test_7_input.txt")
+        var file = new File("../../../ressource/inputTeads/Test_" + args(0) + "_input.txt")
         var fr = new FileReader(file)
         var br = new BufferedReader(fr)
         var s: String = ""
@@ -183,25 +201,35 @@ object Solution extends TicToc {
             graph.addEdge(key1, key2, 1)
             graph.addEdge(key2, key1, 1)
         }
-        toc("Construction of the graph")
+        println("Lenght of adjacence : " + graph.adjacence.size)
         // graph.display
 
         var counter = 0
-        graph.adjacence.keys.foreach {i =>
-            tic
-            eccentricity = graph.calculateEccentricityOf(i)
-            toc("Calculation of 1 eccentricity")
-            if(eccentricity < eccentricityMin) eccentricityMin = eccentricity
-            counter +=1
-            // Console.err.println("counter : " + counter)
-            Console.err.println(outLines)
+        while(graph.adjacence.size > 2) {
+            graph.shedTheLeaves()
+            // println("===============")
+            // graph.display
+            counter += 1
         }
+        // println("adjacent size : " + graph.adjacence.size)
+        if(graph.adjacence.size == 2) counter += 1
+        toc("Calculation of the centre")
+        println("Eccentricity : " + counter)
+        Console.err.println(outLines)
 
-        // Console.err.println(outLines)
-
+        // var counter = 0
+        // graph.adjacence.keys.foreach {i =>
+        //     tic
+        //     eccentricity = graph.calculateEccentricityOf(i)
+        //     toc("Calculation of 1 eccentricity")
+        //     if(eccentricity < eccentricityMin) eccentricityMin = eccentricity
+        //     counter +=1
+        //     // Console.err.println("counter : " + counter)
+        //     Console.err.println(outLines)
+        // }
         // Console.err.println("key : " + i + " -> eccentricity : " + eccentricity(i))
         // Console.err.println("eccentricityMin " + eccentricityMin)
 
-        println(eccentricityMin)
+        // println(eccentricityMin)
     }
 }
