@@ -25,3 +25,4 @@ Terminé : `cpp`(100%), `Scala`(50%) | `Cpp`(14%), `Scala`(14%) ||
 Challenge | Classement
 | :---: | :---:|
 PlatinumRift `Cpp` | 416/1080
+Teads `Scala` | No ranking
