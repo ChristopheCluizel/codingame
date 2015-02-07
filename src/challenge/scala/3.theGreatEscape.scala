@@ -77,9 +77,6 @@ class Graph[T](nbNodes: Int) {
     //     (key, eccentricity)
     // }
 
-    def keyToCoordinates(key: Int): Position = new Position(key / 4, key % 4 - 1)
-    def coordinatesToKey(y: Int, x: Int, width: Int): Int = width * y + x
-
     def display = adjacence.keys.foreach {i =>
         Console.err.println("key : " + i + ", Node : " + adjacence(i).toString +
                 ", Successors : " + getSuccessors(i).mkString(", ") +
@@ -108,10 +105,10 @@ class Wall(var position: Position, var orientation: String) {
 
 class Labyrinth(val width: Int, val height: Int, val nbPlayers: Int, val myId: Int) {
     var nbWallDeployed = 0
-    var destinations = new Array[Int](9)
+    var destinations = Array.ofDim[Int](nbPlayers, width)
     var walls: ArrayBuffer[Wall] = ArrayBuffer()
     var graph = new Graph[Int](width * height)
-    var arrayGraph = new Array.ofDim[Int](height, width)
+    var arrayGraph = Array.ofDim[Int](height, width)
     initiateGraph
 
     def initiateGraph = {
@@ -119,33 +116,56 @@ class Labyrinth(val width: Int, val height: Int, val nbPlayers: Int, val myId: I
         for(i <- 0 until height) {
             for(j <- 0 until width) {
                 graph.addNode(counter, counter)
-                counter += 1
                 arrayGraph(i)(j) = counter
+                counter += 1
             }
         }
         for(i <- 0 until height) {
             for(j <- 0 until width) {
-                if(i - 1 >= 0) graph.addEdge(graph.coordinatesToKey(i, j, width), graph.coordinatesToKey(i-1, j, width), 1)
-                if(i + 1 < height) graph.addEdge(graph.coordinatesToKey(i, j, width), graph.coordinatesToKey(i+1, j, width), 1)
-                if(j - 1 >= 0) graph.addEdge(graph.coordinatesToKey(i, j, width), graph.coordinatesToKey(i, j-1, width), 1)
-                if(j + 1 < height) graph.addEdge(graph.coordinatesToKey(i, j, width), graph.coordinatesToKey(i, j+1, width), 1)
+                if(i - 1 >= 0) graph.addEdge(arrayGraph(i)(j), arrayGraph(i-1)(j), 1)
+                if(i + 1 < height) graph.addEdge(arrayGraph(i)(j), arrayGraph(i+1)(j), 1)
+                if(j - 1 >= 0) graph.addEdge(arrayGraph(i)(j), arrayGraph(i)(j-1), 1)
+                if(j + 1 < height) graph.addEdge(arrayGraph(i)(j), arrayGraph(i)(j+1), 1)
             }
         }
     }
     def update(wall: Wall) = {
         if(wall.orientation == "H") {
             if(wall.position.y -1 >= 0) {
-                graph.removeEdge(graph.coordinatesToKey(wall.position.y, wall.position.x, width), graph.coordinatesToKey(wall.position.y -1, wall.position.x, width))
+                graph.removeEdge(arrayGraph(wall.position.y)(wall.position.x), arrayGraph(wall.position.y -1)(wall.position.x))
                 if(wall.position.x + 1 < width)
-                    graph.removeEdge(graph.coordinatesToKey(wall.position.y, wall.position.x + 1, width), graph.coordinatesToKey(wall.position.y -1, wall.position.x + 1, width))
+                    graph.removeEdge(arrayGraph(wall.position.y)(wall.position.x + 1), arrayGraph(wall.position.y -1)(wall.position.x + 1))
             }
         }
-        if(wall.orientation == "V") {
+        else if(wall.orientation == "V") {
             if(wall.position.x - 1 >= 0) {
-                graph.removeEdge(graph.coordinatesToKey(wall.position.y, wall.position.x, width), graph.coordinatesToKey(wall.position.y, wall.position.x - 1, width))
+                graph.removeEdge(arrayGraph(wall.position.y)(wall.position.x), arrayGraph(wall.position.y)(wall.position.x - 1))
                 if(wall.position.y + 1 < height)
-                    graph.removeEdge(graph.coordinatesToKey(wall.position.y + 1, wall.position.x, width), graph.coordinatesToKey(wall.position.y +1, wall.position.x - 1, width))
+                    graph.removeEdge(arrayGraph(wall.position.y + 1)(wall.position.x), arrayGraph(wall.position.y +1)(wall.position.x - 1))
             }
+        }
+    }
+    def setDestinations(dragons: Array[Dragon]) = {
+        for(k <- 0 until nbPlayers) {
+            dragons(k).id match {
+                case 0 => {
+                    for(i <- 0 until height) destinations(k)(i) = arrayGraph(i)(width-1)
+                }
+                case 1 => {
+                    for(i <- 0 until height) destinations(k)(i) = arrayGraph(i)(0)
+                }
+                case 2 => {
+                    for(j <- 0 until width) destinations(k)(j) = arrayGraph(height-1)(j)
+                }
+                case 3 => {
+                    for(j <- 0 until width) destinations(k)(j) = arrayGraph(0)(j)
+                }
+            }
+        }
+    }
+    def displayDestinations = {
+        for(i <- 0 until nbPlayers) {
+            Console.err.println(destinations(i).mkString(", "))
         }
     }
 
@@ -155,6 +175,8 @@ class Labyrinth(val width: Int, val height: Int, val nbPlayers: Int, val myId: I
         for(i <- 0 until walls.length) string += walls(i) + "\n"
         string
     }
+    def keyToCoordinates(key: Int): Position = new Position(key / 4, key % 4 - 1)
+    def coordinatesToKey(y: Int, x: Int, width: Int): Int = width * y + x
 }
 
 object Player {
@@ -187,10 +209,8 @@ object Player {
             }
             if(firstTurn) {
                 firstTurn = false
-                if(dragons(myId).position.x == 0) {
-                    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                    // labyrinth.destinations = for{i <- distancesArray(0) if(labyrinth.graph.keyToCoordinates(i).x == width-1)} yield i
-                }
+                labyrinth.setDestinations(dragons)
+                labyrinth.displayDestinations
             }
 
             val wallcount = readInt // number of walls on the board
@@ -210,11 +230,11 @@ object Player {
             }
             previousWallCount = wallcount
 
-            var distancesArray = labyrinth.graph.breadthFirstSearch(labyrinth.graph.coordinatesToKey(dragons(myId).position.y, dragons(myId).position.x, width), height, width)
-            Console.err.println(distancesArray(0).mkString(", "))
+            var distancesArray = labyrinth.graph.breadthFirstSearch(labyrinth.arrayGraph(dragons(myId).position.y)(dragons(myId).position.x), height, width)
+            // Console.err.println(distancesArray(0).mkString(", "))
 
             // Console.err.println(labyrinth)
-            // labyrinth.graph.display
+            labyrinth.graph.display
 
             println("RIGHT") // action: LEFT, RIGHT, UP, DOWN or "putX putY putOrientation" to place a wall
         }
