@@ -86,6 +86,8 @@ class Graph[T](nbNodes: Int) {
 class Dragon(var id: Int, var nbWallLeft: Int, var position: Position) {
     var distancesFromOtherNodes: ArrayBuffer[Int] = ArrayBuffer()
     var fathers: ArrayBuffer[Int] = ArrayBuffer()
+    var nodeFather = 0
+    var nodeTarget = 0
     override def toString: String = "Dragon id : " + id + " position : "  + position + " nbWallLeft : " + nbWallLeft
 }
 
@@ -97,7 +99,7 @@ class Wall(var position: Position, var orientation: String) {
     override def toString: String = "Wall position " + position + ", orientation : " + orientation
 }
 
-class Labyrinth(val width: Int, val height: Int, val nbPlayers: Int, val myId: Int) {
+class Labyrinth(val width: Int, val height: Int, var nbPlayers: Int, val myId: Int) {
     var nbWallDeployed = 0
     var destinations = Array.ofDim[Int](nbPlayers, width)   // destinations nodes for each players. players = rows, destinations = columns
     var dragons = new Array[Dragon](nbPlayers)
@@ -163,10 +165,31 @@ class Labyrinth(val width: Int, val height: Int, val nbPlayers: Int, val myId: I
             Console.err.println(destinations(i).mkString(", "))
         }
     }
-    def getTarget(distancesArray: Array[Int]): Int = {  // find the best destination among the 9 possible for me
+    def findPathForDragons = {
+        for(i <- dragons) {
+            if(i.position.x != -1) {    // test if i (dragon) is always playing
+                var (distances, fathers) = graph.findShortestPathsFrom(coordinatesToKey(i.position.y, i.position.x, width), height, width)
+                i.distancesFromOtherNodes ++= distances.toBuffer
+                i.fathers ++= fathers
+                i.nodeTarget = getTarget(i.id, i.distancesFromOtherNodes.toArray)
+
+                var keyDragon = coordinatesToKey(i.position.y, i.position.x, width)
+                var keyFather = i.nodeTarget
+
+                while(fathers(keyFather) != keyDragon){
+                    keyFather = fathers(keyFather)
+                }
+                i.nodeFather = keyFather
+                var positionFather = keyToCoordinates(i.nodeFather, width)
+                Console.err.println("dragon " + i.id + " -> target : " + keyToCoordinates(i.nodeTarget, width) + ", father : " + positionFather)
+            }
+        }
+    }
+
+    def getTarget(idDragon: Int, distancesArray: Array[Int]): Int = {  // find the best destination among the 9 possible for a dragon
         var distanceMin = 100
         var indexMin = 0
-        for(i <- destinations(myId)) {
+        for(i <- destinations(idDragon)) {
             if(distancesArray(i) < distanceMin) {
                 distanceMin = distancesArray(i)
                 indexMin = i
@@ -176,16 +199,7 @@ class Labyrinth(val width: Int, val height: Int, val nbPlayers: Int, val myId: I
         indexMin
     }
 
-    def move(dragon: Dragon, target: Int, fathers: Array[Int]): String = { // move my dragon
-        var keyDragon = coordinatesToKey(dragon.position.y, dragon.position.x, width)
-        var keyFather = target
-
-        while(fathers(keyFather) != keyDragon){
-            keyFather = fathers(keyFather)
-        }
-        var positionFather = keyToCoordinates(keyFather, width)
-        Console.err.println("Father : " + positionFather)
-
+    def move(dragon: Dragon, positionFather: Position): String = { // move my dragon
         if(dragon.position.x < positionFather.x) return "RIGHT"
         if(dragon.position.x > positionFather.x) return "LEFT"
         if(dragon.position.y > positionFather.y) return "UP"
@@ -215,7 +229,7 @@ object Player {
 
             /* ------------- Update of dragons -------------------- */
             for(i <- 0 until nbPlayer) {
-                val Array(x, y, wallsleft) = for(i <- readLine split " ") yield i.toInt // (x,y) coordinates of the player, wallsleft : nb of walls available for the player
+                val Array(x, y, wallsleft) = for(i <- readLine split " ") yield i.toInt // (x,y) coordinates of the player, wallsleft : nb of walls
                 labyrinth.dragons(i) = new Dragon(i, wallsleft, new Position(y, x))
                 Console.err.println(labyrinth.dragons(i))
             }
@@ -236,14 +250,11 @@ object Player {
             }
 
             /* ------------- Strategy -------------------- */
-            var (distancesArray, fathers) = labyrinth.graph.findShortestPathsFrom(labyrinth.arrayGraph(labyrinth.dragons(myId).position.y)(labyrinth.dragons(myId).position.x), height, width)
-            // Console.err.println(distancesArray.mkString(", "))
-            var target = labyrinth.getTarget(distancesArray)
+            labyrinth.findPathForDragons
 
-            Console.err.println("target : " + labyrinth.keyToCoordinates(target, width))
             Console.err.println(labyrinth)
             // labyrinth.graph.display
-            println(labyrinth.move(labyrinth.dragons(myId), target, fathers)) // action: LEFT, RIGHT, UP, DOWN or "putX putY putOrientation" to place a wall
+            println(labyrinth.move(labyrinth.dragons(myId), labyrinth.keyToCoordinates(labyrinth.dragons(myId).nodeFather, width))) // action: LEFT, RIGHT, UP, DOWN or "putX putY putOrientation" to place a wall
         }
     }
 }
