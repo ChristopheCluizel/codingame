@@ -29,29 +29,32 @@ class Graph[T](nbNodes: Int) {
     }
     def getSuccessors(key: Int): ArrayBuffer[Int] = adjacence(key)
 
-    def breadthFirstSearch(key: Int, height: Int, width: Int): Array[Array[Int]] = {
+    def breadthFirstSearch(key: Int, height: Int, width: Int): (Array[Int], Array[Int]) = {
         var queue = new scala.collection.mutable.Queue[Int]
         var markedNode: ArrayBuffer[Int] = ArrayBuffer()
         var actualNodeKey = 0
-        var listNodesVisited = ""
-        var distancesArray = Array.ofDim[Int](1, height*width)
+        var fathers = new Array[Int](height*width)
+        // var listNodesVisited = ""
+        var distancesArray = new Array[Int](height*width)
+        var keyFather = 0
 
         queue += key
-        distancesArray(0)(key) = 0
+        distancesArray(key) = 0
         while(!queue.isEmpty) {
             actualNodeKey = queue.dequeue
             markedNode += actualNodeKey
-            listNodesVisited += actualNodeKey.toString + ", "   // for debug
+            // listNodesVisited += actualNodeKey.toString + ", "   // for debug
             /* treat actual node here */
             for(i <- getSuccessors(actualNodeKey)) {
                 if(!markedNode.contains(i) && !queue.contains(i)) {
-                    distancesArray(0)(i) = distancesArray(0)(actualNodeKey) + 1
+                    distancesArray(i) = distancesArray(actualNodeKey) + 1
                     queue += i
+                    fathers(i) = actualNodeKey
                 }
             }
         }
-        listNodesVisited = listNodesVisited.dropRight(2)
-        distancesArray
+        // listNodesVisited = listNodesVisited.dropRight(2)
+        (distancesArray, fathers)
     }
 
     // def calculateEccentricityOf(key: Int): (Int, Int) = {
@@ -168,6 +171,36 @@ class Labyrinth(val width: Int, val height: Int, val nbPlayers: Int, val myId: I
             Console.err.println(destinations(i).mkString(", "))
         }
     }
+    def getTarget(distancesArray: Array[Int]): Int = {
+        var distanceMin = 100
+        var indexMin = 0
+        for(i <- destinations(myId)) {
+            if(distancesArray(i) < distanceMin) {
+                distanceMin = distancesArray(i)
+                indexMin = i
+            }
+        }
+        // Console.err.println("Target : " + indexMin)
+        indexMin
+    }
+
+    def move(dragon: Dragon, target: Int, fathers: Array[Int]): String = {
+        var keyDragon = coordinatesToKey(dragon.position.y, dragon.position.x, width)
+        var keyFather = target
+
+        while(fathers(keyFather) != keyDragon){
+            keyFather = fathers(keyFather)
+        }
+        var positionFather = keyToCoordinates(keyFather, width)
+        Console.err.println("Father : " + positionFather)
+
+        if(dragon.position.x < positionFather.x) return "RIGHT"
+        if(dragon.position.x > positionFather.x) return "LEFT"
+        if(dragon.position.y > positionFather.y) return "UP"
+        if(dragon.position.y < positionFather.y) return "DOWN"
+
+        return "RIGHT"
+    }
 
     override def toString: String = {
         var string = "Labyrinth width : " + width + ", height : " + height + ", nbPlayer : " + nbPlayers + ", myId : " + myId +
@@ -175,7 +208,7 @@ class Labyrinth(val width: Int, val height: Int, val nbPlayers: Int, val myId: I
         for(i <- 0 until walls.length) string += walls(i) + "\n"
         string
     }
-    def keyToCoordinates(key: Int): Position = new Position(key / 4, key % 4 - 1)
+    def keyToCoordinates(key: Int, width: Int): Position = new Position(key / width, key % width)
     def coordinatesToKey(y: Int, x: Int, width: Int): Int = width * y + x
 }
 
@@ -189,7 +222,6 @@ object Player {
         val Array(width, height, nbPlayer, myId) = for(i <- readLine split " ") yield i.toInt
         var labyrinth = new Labyrinth(width, height, nbPlayer, myId)
         var dragons = new Array[Dragon](nbPlayer)
-        var previousWallCount = 0
         for(i <- 0 until nbPlayer) {
             dragons(i) = new Dragon(i, 0, new Position(0, 0))
         }
@@ -210,14 +242,14 @@ object Player {
             if(firstTurn) {
                 firstTurn = false
                 labyrinth.setDestinations(dragons)
-                labyrinth.displayDestinations
+                // labyrinth.displayDestinations
             }
 
             val wallcount = readInt // number of walls on the board
             labyrinth.nbWallDeployed = wallcount
             while(labyrinth.walls.length < wallcount) labyrinth.walls += new Wall(new Position(0, 0), "")
 
-            for(i <- previousWallCount until wallcount) {
+            for(i <- 0 until wallcount) {
                 // wallx: x-coordinate of the wall
                 // wally: y-coordinate of the wall
                 // wallorientation: wall orientation ('H' or 'V')
@@ -228,15 +260,17 @@ object Player {
                 labyrinth.walls(i).orientation = wallorientation
                 labyrinth.update(labyrinth.walls(i))
             }
-            previousWallCount = wallcount
 
-            var distancesArray = labyrinth.graph.breadthFirstSearch(labyrinth.arrayGraph(dragons(myId).position.y)(dragons(myId).position.x), height, width)
-            // Console.err.println(distancesArray(0).mkString(", "))
+            var (distancesArray, fathers) = labyrinth.graph.breadthFirstSearch(labyrinth.arrayGraph(dragons(myId).position.y)(dragons(myId).position.x), height, width)
+            // Console.err.println(distancesArray.mkString(", "))
+            var target = labyrinth.getTarget(distancesArray)
 
-            // Console.err.println(labyrinth)
-            labyrinth.graph.display
+            Console.err.println("target : " + labyrinth.keyToCoordinates(target, width))
+            Console.err.println(labyrinth)
+            // labyrinth.graph.display
 
-            println("RIGHT") // action: LEFT, RIGHT, UP, DOWN or "putX putY putOrientation" to place a wall
+            println(labyrinth.move(dragons(myId), target, fathers))
+            // println("RIGHT") // action: LEFT, RIGHT, UP, DOWN or "putX putY putOrientation" to place a wall
         }
     }
 }
