@@ -29,46 +29,53 @@ class Graph[T](nbNodes: Int) {
     }
     def getSuccessors(key: Int): ArrayBuffer[Int] = adjacence(key)
 
-    def breadthFirstSearch(key: Int): String = {
+    def breadthFirstSearch(key: Int, height: Int, width: Int): Array[Array[Int]] = {
         var queue = new scala.collection.mutable.Queue[Int]
         var markedNode: ArrayBuffer[Int] = ArrayBuffer()
         var actualNodeKey = 0
         var listNodesVisited = ""
+        var distancesArray = Array.ofDim[Int](1, height*width)
 
         queue += key
+        distancesArray(0)(key) = 0
         while(!queue.isEmpty) {
             actualNodeKey = queue.dequeue
             markedNode += actualNodeKey
             listNodesVisited += actualNodeKey.toString + ", "   // for debug
-            // treat actual node here
-            for(i <- getSuccessors(actualNodeKey)) if(!markedNode.contains(i) && !queue.contains(i)) queue += i
-        }
-        listNodesVisited = listNodesVisited.dropRight(2)
-        listNodesVisited
-    }
-
-    def calculateEccentricityOf(key: Int): (Int, Int) = {
-        var queue = new scala.collection.mutable.Queue[Int]
-        var markedNode: ArrayBuffer[Int] = ArrayBuffer()
-        var actualNodeKey = 0
-        var listNodesVisited = ""
-        var eccentricity = 0
-        var distances: scala.collection.mutable.Map[Int, Int] = scala.collection.mutable.Map()
-
-        adjacence.keys.foreach(i => distances += (i -> -1))
-
-        distances.update(key, 0)
-        queue += key
-        while(!queue.isEmpty) {
-            actualNodeKey = queue.dequeue
-            for(i <- getSuccessors(actualNodeKey)) if(distances(i) == -1) {
-                queue += i
-                distances.update(i, distances(actualNodeKey) + 1)
-                eccentricity = distances(i)
+            /* treat actual node here */
+            for(i <- getSuccessors(actualNodeKey)) {
+                if(!markedNode.contains(i) && !queue.contains(i)) {
+                    distancesArray(0)(i) = distancesArray(0)(actualNodeKey) + 1
+                    queue += i
+                }
             }
         }
-        (key, eccentricity)
+        listNodesVisited = listNodesVisited.dropRight(2)
+        distancesArray
     }
+
+    // def calculateEccentricityOf(key: Int): (Int, Int) = {
+    //     var queue = new scala.collection.mutable.Queue[Int]
+    //     var markedNode: ArrayBuffer[Int] = ArrayBuffer()
+    //     var actualNodeKey = 0
+    //     var listNodesVisited = ""
+    //     var eccentricity = 0
+    //     var distances: scala.collection.mutable.Map[Int, Int] = scala.collection.mutable.Map()
+
+    //     adjacence.keys.foreach(i => distances += (i -> -1))
+
+    //     distances.update(key, 0)
+    //     queue += key
+    //     while(!queue.isEmpty) {
+    //         actualNodeKey = queue.dequeue
+    //         for(i <- getSuccessors(actualNodeKey)) if(distances(i) == -1) {
+    //             queue += i
+    //             distances.update(i, distances(actualNodeKey) + 1)
+    //             eccentricity = distances(i)
+    //         }
+    //     }
+    //     (key, eccentricity)
+    // }
 
     def keyToCoordinates(key: Int): Position = new Position(key / 4, key % 4 - 1)
     def coordinatesToKey(y: Int, x: Int, width: Int): Int = width * y + x
@@ -101,8 +108,10 @@ class Wall(var position: Position, var orientation: String) {
 
 class Labyrinth(val width: Int, val height: Int, val nbPlayers: Int, val myId: Int) {
     var nbWallDeployed = 0
+    var destinations = new Array[Int](9)
     var walls: ArrayBuffer[Wall] = ArrayBuffer()
     var graph = new Graph[Int](width * height)
+    var arrayGraph = new Array.ofDim[Int](height, width)
     initiateGraph
 
     def initiateGraph = {
@@ -111,6 +120,7 @@ class Labyrinth(val width: Int, val height: Int, val nbPlayers: Int, val myId: I
             for(j <- 0 until width) {
                 graph.addNode(counter, counter)
                 counter += 1
+                arrayGraph(i)(j) = counter
             }
         }
         for(i <- 0 until height) {
@@ -162,6 +172,7 @@ object Player {
             dragons(i) = new Dragon(i, 0, new Position(0, 0))
         }
 
+        var firstTurn = true
         // game loop
         while(true) {
             for(i <- 0 until nbPlayer) {
@@ -173,6 +184,13 @@ object Player {
                 dragons(i). nbWallLeft = wallsleft
                 dragons(i).position = new Position(y, x)
                 Console.err.println(dragons(i).toString)
+            }
+            if(firstTurn) {
+                firstTurn = false
+                if(dragons(myId).position.x == 0) {
+                    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    // labyrinth.destinations = for{i <- distancesArray(0) if(labyrinth.graph.keyToCoordinates(i).x == width-1)} yield i
+                }
             }
 
             val wallcount = readInt // number of walls on the board
@@ -192,7 +210,10 @@ object Player {
             }
             previousWallCount = wallcount
 
-            Console.err.println(labyrinth)
+            var distancesArray = labyrinth.graph.breadthFirstSearch(labyrinth.graph.coordinatesToKey(dragons(myId).position.y, dragons(myId).position.x, width), height, width)
+            Console.err.println(distancesArray(0).mkString(", "))
+
+            // Console.err.println(labyrinth)
             // labyrinth.graph.display
 
             println("RIGHT") // action: LEFT, RIGHT, UP, DOWN or "putX putY putOrientation" to place a wall
