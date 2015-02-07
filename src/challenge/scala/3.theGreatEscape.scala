@@ -29,23 +29,20 @@ class Graph[T](nbNodes: Int) {
     }
     def getSuccessors(key: Int): ArrayBuffer[Int] = adjacence(key)
 
-    def breadthFirstSearch(key: Int, height: Int, width: Int): (Array[Int], Array[Int]) = {
+    def findShortestPathsFrom(StartNode: Int, height: Int, width: Int): (Array[Int], Array[Int]) = { // find the shortest path between startNode and all the other nodes of the graph
         var queue = new scala.collection.mutable.Queue[Int]
-        var markedNode: ArrayBuffer[Int] = ArrayBuffer()
-        var actualNodeKey = 0
-        var fathers = new Array[Int](height*width)
-        // var listNodesVisited = ""
-        var distancesArray = new Array[Int](height*width)
-        var keyFather = 0
+        var markedNode: ArrayBuffer[Int] = ArrayBuffer()    // indicates if the node has already been treated
+        var actualNodeKey = 0   // node which is currently treated
+        var fathers = new Array[Int](height*width)  // keeps the fathers of all the nodes
+        var distancesArray = new Array[Int](height*width)   // keeps the distances between the startNode and all the other ones
 
-        queue += key
-        distancesArray(key) = 0
+        queue += StartNode
+        distancesArray(StartNode) = 0 // distance between a node and itself is null
         while(!queue.isEmpty) {
             actualNodeKey = queue.dequeue
             markedNode += actualNodeKey
-            // listNodesVisited += actualNodeKey.toString + ", "   // for debug
             /* treat actual node here */
-            for(i <- getSuccessors(actualNodeKey)) {
+            for(i <- getSuccessors(actualNodeKey)) {    // get all the successors of the current node
                 if(!markedNode.contains(i) && !queue.contains(i)) {
                     distancesArray(i) = distancesArray(actualNodeKey) + 1
                     queue += i
@@ -53,32 +50,31 @@ class Graph[T](nbNodes: Int) {
                 }
             }
         }
-        // listNodesVisited = listNodesVisited.dropRight(2)
         (distancesArray, fathers)
     }
 
-    // def calculateEccentricityOf(key: Int): (Int, Int) = {
-    //     var queue = new scala.collection.mutable.Queue[Int]
-    //     var markedNode: ArrayBuffer[Int] = ArrayBuffer()
-    //     var actualNodeKey = 0
-    //     var listNodesVisited = ""
-    //     var eccentricity = 0
-    //     var distances: scala.collection.mutable.Map[Int, Int] = scala.collection.mutable.Map()
+    def calculateEccentricityOf(key: Int): (Int, Int) = {   // not used here
+        var queue = new scala.collection.mutable.Queue[Int]
+        var markedNode: ArrayBuffer[Int] = ArrayBuffer()
+        var actualNodeKey = 0
+        var listNodesVisited = ""
+        var eccentricity = 0
+        var distances: scala.collection.mutable.Map[Int, Int] = scala.collection.mutable.Map()
 
-    //     adjacence.keys.foreach(i => distances += (i -> -1))
+        adjacence.keys.foreach(i => distances += (i -> -1))
 
-    //     distances.update(key, 0)
-    //     queue += key
-    //     while(!queue.isEmpty) {
-    //         actualNodeKey = queue.dequeue
-    //         for(i <- getSuccessors(actualNodeKey)) if(distances(i) == -1) {
-    //             queue += i
-    //             distances.update(i, distances(actualNodeKey) + 1)
-    //             eccentricity = distances(i)
-    //         }
-    //     }
-    //     (key, eccentricity)
-    // }
+        distances.update(key, 0)
+        queue += key
+        while(!queue.isEmpty) {
+            actualNodeKey = queue.dequeue
+            for(i <- getSuccessors(actualNodeKey)) if(distances(i) == -1) {
+                queue += i
+                distances.update(i, distances(actualNodeKey) + 1)
+                eccentricity = distances(i)
+            }
+        }
+        (key, eccentricity)
+    }
 
     def display = adjacence.keys.foreach {i =>
         Console.err.println("key : " + i + ", Node : " + adjacence(i).toString +
@@ -87,14 +83,9 @@ class Graph[T](nbNodes: Int) {
     }
 }
 
-object Orientation extends Enumeration {
-    type Orientation = Value
-    val H, V = Value
-}
-
-import Orientation._
-
 class Dragon(var id: Int, var nbWallLeft: Int, var position: Position) {
+    var distancesFromOtherNodes: ArrayBuffer[Int] = ArrayBuffer()
+    var fathers: ArrayBuffer[Int] = ArrayBuffer()
     override def toString: String = "Dragon id : " + id + " position : "  + position + " nbWallLeft : " + nbWallLeft
 }
 
@@ -108,22 +99,23 @@ class Wall(var position: Position, var orientation: String) {
 
 class Labyrinth(val width: Int, val height: Int, val nbPlayers: Int, val myId: Int) {
     var nbWallDeployed = 0
-    var destinations = Array.ofDim[Int](nbPlayers, width)
-    var walls: ArrayBuffer[Wall] = ArrayBuffer()
-    var graph = new Graph[Int](width * height)
-    var arrayGraph = Array.ofDim[Int](height, width)
+    var destinations = Array.ofDim[Int](nbPlayers, width)   // destinations nodes for each players. players = rows, destinations = columns
+    var dragons = new Array[Dragon](nbPlayers)
+    var walls: ArrayBuffer[Wall] = ArrayBuffer()    // array of the nodes deployed
+    var graph = new Graph[Int](width * height)  // representation of the labyrinth for finding the shortest path: 1 node = 1 square of the labyrinth
+    var arrayGraph = Array.ofDim[Int](height, width)    // representation of the labyrinth: 1 square = 1 node of the graph
     initiateGraph
 
-    def initiateGraph = {
+    def initiateGraph = {   // fill the graph and the array labyrinth
         var counter = 0
-        for(i <- 0 until height) {
+        for(i <- 0 until height) {  // fill the array labyrinth and add nodes to the graph labyrinth
             for(j <- 0 until width) {
                 graph.addNode(counter, counter)
                 arrayGraph(i)(j) = counter
                 counter += 1
             }
         }
-        for(i <- 0 until height) {
+        for(i <- 0 until height) {  // add edges to the graph labyrinth for adjacents squares
             for(j <- 0 until width) {
                 if(i - 1 >= 0) graph.addEdge(arrayGraph(i)(j), arrayGraph(i-1)(j), 1)
                 if(i + 1 < height) graph.addEdge(arrayGraph(i)(j), arrayGraph(i+1)(j), 1)
@@ -132,7 +124,7 @@ class Labyrinth(val width: Int, val height: Int, val nbPlayers: Int, val myId: I
             }
         }
     }
-    def update(wall: Wall) = {
+    def update(wall: Wall) = {  // update the graph labyrinth with the walls deployed. 1 wall deployed => 2 edges removed
         if(wall.orientation == "H") {
             if(wall.position.y -1 >= 0) {
                 graph.removeEdge(arrayGraph(wall.position.y)(wall.position.x), arrayGraph(wall.position.y -1)(wall.position.x))
@@ -148,7 +140,7 @@ class Labyrinth(val width: Int, val height: Int, val nbPlayers: Int, val myId: I
             }
         }
     }
-    def setDestinations(dragons: Array[Dragon]) = {
+    def setDestinations = { // at the beginning of the game set the node destinations of each players
         for(k <- 0 until nbPlayers) {
             dragons(k).id match {
                 case 0 => {
@@ -171,7 +163,7 @@ class Labyrinth(val width: Int, val height: Int, val nbPlayers: Int, val myId: I
             Console.err.println(destinations(i).mkString(", "))
         }
     }
-    def getTarget(distancesArray: Array[Int]): Int = {
+    def getTarget(distancesArray: Array[Int]): Int = {  // find the best destination among the 9 possible for me
         var distanceMin = 100
         var indexMin = 0
         for(i <- destinations(myId)) {
@@ -184,7 +176,7 @@ class Labyrinth(val width: Int, val height: Int, val nbPlayers: Int, val myId: I
         indexMin
     }
 
-    def move(dragon: Dragon, target: Int, fathers: Array[Int]): String = {
+    def move(dragon: Dragon, target: Int, fathers: Array[Int]): String = { // move my dragon
         var keyDragon = coordinatesToKey(dragon.position.y, dragon.position.x, width)
         var keyFather = target
 
@@ -199,7 +191,7 @@ class Labyrinth(val width: Int, val height: Int, val nbPlayers: Int, val myId: I
         if(dragon.position.y > positionFather.y) return "UP"
         if(dragon.position.y < positionFather.y) return "DOWN"
 
-        return "RIGHT"
+        return "RIGHT" // default value
     }
 
     override def toString: String = {
@@ -215,62 +207,43 @@ class Labyrinth(val width: Int, val height: Int, val nbPlayers: Int, val myId: I
 object Player {
 
     def main(args: Array[String]) {
-        // w: width of the board
-        // h: height of the board
-        // playercount: number of players (2,3, or 4)
-        // myid: id of my player (0 = 1st player, 1 = 2nd player, ...)
+        var firstTurn = true
         val Array(width, height, nbPlayer, myId) = for(i <- readLine split " ") yield i.toInt
         var labyrinth = new Labyrinth(width, height, nbPlayer, myId)
-        var dragons = new Array[Dragon](nbPlayer)
-        for(i <- 0 until nbPlayer) {
-            dragons(i) = new Dragon(i, 0, new Position(0, 0))
-        }
 
-        var firstTurn = true
-        // game loop
         while(true) {
+
+            /* ------------- Update of dragons -------------------- */
             for(i <- 0 until nbPlayer) {
-                // x: x-coordinate of the player
-                // y: y-coordinate of the player
-                // wallsleft: number of walls available for the player
-                val Array(x, y, wallsleft) = for(i <- readLine split " ") yield i.toInt
-                dragons(i).id = i
-                dragons(i). nbWallLeft = wallsleft
-                dragons(i).position = new Position(y, x)
-                Console.err.println(dragons(i).toString)
+                val Array(x, y, wallsleft) = for(i <- readLine split " ") yield i.toInt // (x,y) coordinates of the player, wallsleft : nb of walls available for the player
+                labyrinth.dragons(i) = new Dragon(i, wallsleft, new Position(y, x))
+                Console.err.println(labyrinth.dragons(i))
             }
-            if(firstTurn) {
+            if(firstTurn) { // fix the destinations for each player at the beginning of the game
                 firstTurn = false
-                labyrinth.setDestinations(dragons)
+                labyrinth.setDestinations
                 // labyrinth.displayDestinations
             }
 
-            val wallcount = readInt // number of walls on the board
-            labyrinth.nbWallDeployed = wallcount
-            while(labyrinth.walls.length < wallcount) labyrinth.walls += new Wall(new Position(0, 0), "")
-
-            for(i <- 0 until wallcount) {
-                // wallx: x-coordinate of the wall
-                // wally: y-coordinate of the wall
-                // wallorientation: wall orientation ('H' or 'V')
-                val Array(_wallx, _wally, wallorientation) = readLine split " "
-                val wallx = _wallx.toInt
-                val wally = _wally.toInt
-                labyrinth.walls(i).position = new Position(wally, wallx)
-                labyrinth.walls(i).orientation = wallorientation
-                labyrinth.update(labyrinth.walls(i))
+            /* ------------- Update of walls -------------------- */
+            labyrinth.nbWallDeployed = readInt // number of walls on the board
+            while(labyrinth.walls.length < labyrinth.nbWallDeployed) labyrinth.walls += new Wall(new Position(0, 0), "")
+            for(i <- 0 until labyrinth.nbWallDeployed) {
+                val Array(_wallx, _wally, wallorientation) = readLine split " " //(wallx, wally): coordinates of the wall, wallorientation: wall orientation
+                labyrinth.walls(i).position = new Position(_wally.toInt, _wallx.toInt)    // fix the position of the wall
+                labyrinth.walls(i).orientation = wallorientation    // fix the orientation of the wall
+                labyrinth.update(labyrinth.walls(i))    // update the labyrinth according to the walls deployed
             }
 
-            var (distancesArray, fathers) = labyrinth.graph.breadthFirstSearch(labyrinth.arrayGraph(dragons(myId).position.y)(dragons(myId).position.x), height, width)
+            /* ------------- Strategy -------------------- */
+            var (distancesArray, fathers) = labyrinth.graph.findShortestPathsFrom(labyrinth.arrayGraph(labyrinth.dragons(myId).position.y)(labyrinth.dragons(myId).position.x), height, width)
             // Console.err.println(distancesArray.mkString(", "))
             var target = labyrinth.getTarget(distancesArray)
 
             Console.err.println("target : " + labyrinth.keyToCoordinates(target, width))
             Console.err.println(labyrinth)
             // labyrinth.graph.display
-
-            println(labyrinth.move(dragons(myId), target, fathers))
-            // println("RIGHT") // action: LEFT, RIGHT, UP, DOWN or "putX putY putOrientation" to place a wall
+            println(labyrinth.move(labyrinth.dragons(myId), target, fathers)) // action: LEFT, RIGHT, UP, DOWN or "putX putY putOrientation" to place a wall
         }
     }
 }
