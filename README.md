@@ -14,11 +14,11 @@ Skynet : le saut `Cpp` `Scala` | Pertes en bourse `Scala`||
 Températures `Cpp` | Indiana - Niveau1 `Scala`||
 Mars Lander - niveau 1 `Cpp` `Scala` | Suite de Conway `Scala` ||
 ASCII Art `Cpp` | Teads `Scala` ||
-Chuck Norris `Cpp` |||
+Chuck Norris `Cpp` | Des nains sur des épaules de géants `Scala` ||
 MIME Type `Cpp` |||
 Défibrillateurs `Cpp` |||
 Cheveaux de course `Cpp` |||
-Terminé : `cpp`(100%), `Scala`(45.5%) | `Cpp`(12.5%), `Scala`(31.25%) ||
+Terminé : `cpp`(100%), `Scala`(45.5%) | `Cpp`(12.5%), `Scala`(37.5%) ||
 
 
 - Challenges :
