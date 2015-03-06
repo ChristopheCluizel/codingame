@@ -10,19 +10,21 @@ Problèmes résolus :
 Onboarding`Cpp` `Scala` | Skynet : le virus `Cpp` ||
 Le pouvoir de Thor `Cpp` `Scala` | Détecteur de chaleur `Cpp` ||
 La descente `Cpp` `Scala` | Les clones `Scala`||
-Skynet : le saut `Cpp` `Scala` |Pertes en bourse `Scala`||
-Températures `Cpp` |||
-Mars Lander - niveau 1 `Cpp` `Scala` |||
-ASCII Art `Cpp` |||
+Skynet : le saut `Cpp` `Scala` | Pertes en bourse `Scala`||
+Températures `Cpp` | Indiana - Niveau1 `Scala`||
+Mars Lander - niveau 1 `Cpp` `Scala` | Suite de Conway `Scala` ||
+ASCII Art `Cpp` | Teads `Scala` ||
 Chuck Norris `Cpp` |||
+MIME Type `Cpp` |||
 Défibrillateurs `Cpp` |||
 Cheveaux de course `Cpp` |||
-Terminé : `cpp`(100%), `Scala`(50%) | `Cpp`(14%), `Scala`(14%) ||
+Terminé : `cpp`(100%), `Scala`(45.5%) | `Cpp`(12.5%), `Scala`(31.25%) ||
 
 
 - Challenges :
 
 Challenge | Classement
 | :---: | :---:|
-PlatinumRift `Cpp` | 416/1080
-Teads `Scala` | No ranking
+Platinum Rift `Cpp` | 416/1080
+Platinum Rift 2 `Scala` | 193/560
+The Great Escape `Scala` | 549/1153
