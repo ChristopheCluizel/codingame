@@ -1,11 +1,11 @@
 #Codingame
 
-Résolution des problèmes d'algorithmique de la plateforme [Codingame](http://www.codingame.com/).
+Resolution of algorithmic problems from the [Codingame](http://www.codingame.com/) platform.
 
-Problèmes résolus :
+Solved problems :
 - Solo :
 
-| Facile | Moyen | Difficile | Expert
+| Easy | Medium | Hard | Expert
 | :---: | :---: | :---: | :---: |
 Onboarding`Cpp` `Scala` | Skynet : le virus `Cpp` ||
 Le pouvoir de Thor `Cpp` `Scala` | Détecteur de chaleur `Cpp` ||
@@ -18,12 +18,12 @@ Chuck Norris `Cpp` | Des nains sur des épaules de géants `Scala` ||
 MIME Type `Cpp` |||
 Défibrillateurs `Cpp` |||
 Cheveaux de course `Cpp` |||
-Terminé : `cpp`(100%), `Scala`(45.5%) | `Cpp`(12.5%), `Scala`(37.5%) ||
+Done : `cpp`(100%), `Scala`(45.5%) | `Cpp`(12.5%), `Scala`(37.5%) ||
 
 
 - Challenges :
 
-Challenge | Classement
+Challenge | Ranking
 | :---: | :---:|
 Platinum Rift `Cpp` | 416/1080
 Platinum Rift 2 `Scala` | 193/560
