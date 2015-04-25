@@ -1,5 +1,3 @@
-package thereIsNoSpoon
-
 /**
  * Don't let the machines win. You are humanity's last hope...
  */
