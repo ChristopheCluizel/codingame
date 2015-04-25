@@ -28,3 +28,4 @@ Challenge | Ranking
 Platinum Rift `Cpp` | 416/1080
 Platinum Rift 2 `Scala` | 193/560
 The Great Escape `Scala` | 549/1153
+There is no Spoon `Scala` | 457/1626
