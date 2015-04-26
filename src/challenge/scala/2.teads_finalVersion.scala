@@ -1,8 +1,3 @@
-/*
-    For the test8, the answer is found in approximately 1.5 min.
-    For the test9, it answers in approximately 5 min.
-*/
-
 import math._
 import scala.util._
 import Array._
@@ -21,7 +16,7 @@ class Graph[X](nbNodes: Int){
         adjacence(key1) += (key2)
     }
     def isEmpty: Boolean = adjacence.isEmpty
-    def successorIsEmpty(key: Int): Boolean = adjacence(key).size == 1
+    def isALeaf(key: Int): Boolean = adjacence(key).size == 1
     def nodePresent(key: Int): Boolean = adjacence.contains(key)
     def edgePresent(key1: Int, key2: Int): Boolean = adjacence(key1).contains(key2)
     def getSuccessors(key: Int): ArrayBuffer[Int] = adjacence(key)
@@ -29,17 +24,19 @@ class Graph[X](nbNodes: Int){
     def shedTheLeaves() = {
         var leaves: ArrayBuffer[Int] = ArrayBuffer()
         adjacence.keys.foreach {i =>
-            if(successorIsEmpty(i)) {
-                adjacence -= i
+            if(isALeaf(i)) {
                 leaves += i
             }
         }
         for(j <- 0 until leaves.size) {
-            adjacence.keys.foreach {i =>
-                if(adjacence(i).contains(leaves(j)))
-                adjacence(i) -= leaves(j)
-            }
+            adjacence(getSuccessors(leaves(j))(0)) -= leaves(j)
+            adjacence -= leaves(j)
         }
+
+    }
+
+    def display = adjacence.keys.foreach {i =>
+    Console.err.println("key : " + i + ", Node : " + adjacence(i).toString + ", Successors : " + getSuccessors(i).mkString(", "))
     }
 }
 
