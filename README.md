@@ -7,17 +7,17 @@ Solved problems :
 
 | Easy | Medium | Hard | Expert
 | :---: | :---: | :---: | :---: |
-Onboarding`Cpp` `Scala` | Skynet : le virus `Cpp` ||
-Le pouvoir de Thor `Cpp` `Scala` | Détecteur de chaleur `Cpp` ||
-La descente `Cpp` `Scala` | Les clones `Scala`||
-Skynet : le saut `Cpp` `Scala` | Pertes en bourse `Scala`||
-Températures `Cpp` | Indiana - Niveau1 `Scala`||
-Mars Lander - niveau 1 `Cpp` `Scala` | Suite de Conway `Scala` ||
-ASCII Art `Cpp` | Teads `Scala` ||
-Chuck Norris `Cpp` | Des nains sur des épaules de géants `Scala` ||
-MIME Type `Cpp` |||
-Défibrillateurs `Cpp` |||
-Cheveaux de course `Cpp` |||
+Onboarding`Cpp` `Scala` | Skynet: the Virus `Cpp` ||
+Power of Thor `Cpp` `Scala` | Heat Detector `Cpp` ||
+The Descent `Cpp` `Scala` | The Paranoid Android `Scala`||
+Skynet: the Chasm `Cpp` `Scala` | Stock Exchange Losses `Scala`||
+Temperatures `Cpp` | Indiana - Level 1 `Scala`||
+Mars Lander - level 1 `Cpp` `Scala` | Conway Sequence `Scala` ||
+ASCII Art `Cpp` | Teads Sponsored Challenge `Scala` ||
+Chuck Norris `Cpp` | Dwarfs standing on the shoulders of giants `Scala` ||
+MIME Type `Cpp` | APU: Init Phase `Scala` ||
+Defibrillators `Cpp` |||
+Horse-racing Duals `Cpp` |||
 Done : `cpp`(100%), `Scala`(45.5%) | `Cpp`(12.5%), `Scala`(37.5%) ||
 
 
