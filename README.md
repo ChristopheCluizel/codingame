@@ -16,9 +16,10 @@ Solved problems :
 [ASCII Art](src/single/1.easy/cpp/7.asciiArt.cpp) `Cpp` | [Teads Sponsored Challenge](src/challenge/scala/2.teads_finalVersion.scala) `Scala` ||
 [Chuck Norris](src/single/1.easy/cpp/8.chuckNorris.cpp) `Cpp` | [Dwarfs standing on the shoulders of giants](src/single/2.medium/scala/12.dwarfsStandingOnTheShouldersOfGiants.scala) `Scala` ||
 [MIME Type](src/single/1.easy/cpp/9.mime_type.cpp) `Cpp` | [APU: Init Phase](src/single/2.medium/scala/1.APU_initPhase.scala) `Scala` ||
-[Defibrillators](src/single/1.easy/cpp/10.defibrillators.cpp) `Cpp` |||
+[Defibrillators](src/single/1.easy/cpp/10.defibrillators.cpp) `Cpp` | [Bender, a depressed robot](src/single/2.medium/scala/13.benderADepressedRobot.scala) `Scala`||
 [Horse-racing Duals](src/single/1.easy/cpp/11.horse_racing_duals.cpp) `Cpp` |||
-Done : `cpp`(100%), `Scala`(45.5%) | `Cpp`(12.5%), `Scala`(37.5%) ||
+Done : `Cpp`(100%), `Scala`(45.5%) | `Cpp`(11.8%), `Scala`(47.1%) ||
+Complete : 100% | 58.9% ||
 
 
 - [Challenges](src/challenge) :
