@@ -98,7 +98,7 @@ object Player extends App {
       .head
       ._1
 
-    if(zombies.map(zombie => (nearestHuman, zombie.distanceWith(nearestHuman))).map { case (_, distanceWithZombie) => distanceWithZombie }.exists(d => (d + 400) / 400 < (ash.distanceWith(nearestHuman) + 2000) / 1000)) back = true
+    if(zombies.map(zombie => (nearestHuman, zombie.distanceWith(nearestHuman))).map { case (_, distanceWithZombie) => distanceWithZombie }.exists(d => d / 400 < (ash.nextPosition(1000, nearestHuman).distanceWith(nearestHuman.position) + 2000) / 1000)) back = true
     else back = false
     
     if(back)
