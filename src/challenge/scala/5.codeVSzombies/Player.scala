@@ -92,13 +92,13 @@ object Player extends App {
     val nearestHuman: Human = humansNotConvicted.map(human => (human, ash.distanceWith(human))).sortBy(_._2)
       .head
       ._1
-    val nearesZombie: Zombie = zombies.map(zombie => (zombie, ash.distanceWith(zombie))).sortBy(_._2)
+    val nearestZombie: Zombie = zombies.map(zombie => (zombie, ash.distanceWith(zombie))).sortBy(_._2)
       .head
       ._1
 
     if(ash.distanceWith(nearestHuman) > 2000)
-    println( s"""${nearestHuman.position.x} ${nearestHuman.position.y}""")
+      println( s"""${nearestHuman.position.x} ${nearestHuman.position.y}""")
     else
-      println( s"""${nearesZombie.position.x} ${nearesZombie.position.y}""")
+      println( s"""${nearestZombie.position.x} ${nearestZombie.position.y}""")
   }
 }
