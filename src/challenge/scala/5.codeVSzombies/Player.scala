@@ -57,6 +57,8 @@ object Player extends App {
 
   class Zombie(id: Int, position: Point, var nextPosition: Point) extends Personage(id: Int, position: Point)
 
+  var back = true
+
   // game loop
   while (true) {
     var humans: ArrayBuffer[Human] = ArrayBuffer[Human]()
@@ -96,7 +98,10 @@ object Player extends App {
       .head
       ._1
 
-    if(ash.distanceWith(nearestHuman) > 2000)
+    if(ash.distanceWith(nearestHuman) < 10) back = false
+    if(ash.distanceWith(nearestHuman) > 2000) back = true
+    
+    if(back)
       println( s"""${nearestHuman.position.x} ${nearestHuman.position.y}""")
     else
       println( s"""${nearestZombie.position.x} ${nearestZombie.position.y}""")
