@@ -57,7 +57,7 @@ object Player extends App {
 
   class Zombie(id: Int, position: Point, var nextPosition: Point) extends Personage(id: Int, position: Point)
 
-  var back = true
+  var back = false
 
   // game loop
   while (true) {
@@ -98,8 +98,8 @@ object Player extends App {
       .head
       ._1
 
-    if(ash.distanceWith(nearestHuman) < 10) back = false
-    if(ash.distanceWith(nearestHuman) > 2000) back = true
+    if(zombies.map(zombie => (nearestHuman, zombie.distanceWith(nearestHuman))).map { case (_, distanceWithZombie) => distanceWithZombie }.exists(d => (d + 400) / 400 < (ash.distanceWith(nearestHuman) + 2000) / 1000)) back = true
+    else back = false
     
     if(back)
       println( s"""${nearestHuman.position.x} ${nearestHuman.position.y}""")
