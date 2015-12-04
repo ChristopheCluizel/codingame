@@ -1,6 +1,6 @@
 #Codingame
 
-Resolution of algorithmic problems from the [Codingame](http://www.codingame.com/) platform.
+Resolution of algorithmic problems from the [Codingame](http://www.codingame.com/) platform. Here is [my profil](https://www.codingame.com/profile/4cce36f2012969a9a20ea8fdd0a2d8f8960365).
 
 Solved problems :
 - [Solo](src/single/) :
@@ -30,3 +30,4 @@ Challenge | Ranking
 [Platinum Rift 2](src/challenge/scala/1.platinumRift.scala) `Scala` | 193/560
 [The Great Escape](src/challenge/scala/3.theGreatEscape.scala) `Scala` | 549/1153
 [There is no Spoon](src/challenge/scala/4.thereIsNoSpoon) `Scala` | 457/1626
+[Code vs Zombies](src/challenge/scala/5.codeVSzombies) `Scala` | 779/3968
