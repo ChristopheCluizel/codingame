@@ -52,8 +52,21 @@ object Player extends App {
       res += s"=== My pods ===\n"
       myPods.foreach(pod => res += s"---$pod\n")
       res += s"=== Your pods ===\n"
-      yourPods.foreach(pod => res += "s---$pod\n")
+      yourPods.foreach(pod => res += s"---$pod\n")
       res
+    }
+
+    def getPositionOfACheckpoint(checkpointId: Int): Position = {
+      track.checkpoints.filter(checkpoint => checkpoint.id == checkpointId)(0).position
+    }
+
+    def formatOutput(position: Position, thrust: Int): String = {
+      s"${position.x} ${position.y} $thrust"
+    }
+
+    def playTurn(): Unit = {
+      println(formatOutput(getPositionOfACheckpoint(myPods(0).nextCheckpoint), 100))
+      println(formatOutput(getPositionOfACheckpoint(myPods(1).nextCheckpoint), 100))
     }
   }
 
@@ -70,7 +83,6 @@ object Player extends App {
   while (true) {
     game.updatePods()
     System.err.println(game)
-    println("8000 4500 100")
-    println("8000 4500 100")
+    game.playTurn()
   }
 }
