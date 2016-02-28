@@ -25,7 +25,7 @@ object Player extends App {
   }
 
   case class Pod(var position: Position = new Position(0, 0), var speed: Speed = new Speed(0, 0), var angle: Int = 0, var nextCheckpoint: Int = 0) {
-    override def toString: String = s"$position\n$speed\nangle: $angle"
+    override def toString: String = s"$position\n$speed\nangle: $angle\nnextCheckpoint: $nextCheckpoint"
   }
 
   case class Game(val track: Track, val myPods: Array[Pod] = Array(new Pod(), new Pod()), val yourPods: Array[Pod] = Array(new Pod(), new Pod())) {
@@ -49,10 +49,10 @@ object Player extends App {
     override def toString: String = {
       var res = ""
       res += s"=== Track ===\n$track\n"
-      res += s"--- My pods ---\n"
-      myPods.foreach(pod => res += s"$pod\n")
-      res += s"--- Your pods ---\n"
-      yourPods.foreach(pod => res += s"$pod\n")
+      res += s"=== My pods ===\n"
+      myPods.foreach(pod => res += s"---$pod\n")
+      res += s"=== Your pods ===\n"
+      yourPods.foreach(pod => res += "s---$pod\n")
       res
     }
   }
