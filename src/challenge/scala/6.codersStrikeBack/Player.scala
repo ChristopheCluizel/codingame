@@ -75,7 +75,7 @@ object Player extends App {
     }
     override def toString: String = {
       var res = ""
-//      res += s"=== Track ===\n$track\n"
+      //      res += s"=== Track ===\n$track\n"
       res += s"=== My pods ===\n"
       myPods.foreach(pod => res += s"---$pod\n")
       res += s"=== Your pods ===\n"
@@ -94,12 +94,16 @@ object Player extends App {
       val angleBetweenPodAndCheckpoint = getAngleBetweenPodAndCheckpoint(pod, targetPosition)
       System.err.println(s"realSpeed: $realSpeed")
       System.err.println(s"angleBetweenPodAndCheckpoint: $angleBetweenPodAndCheckpoint")
-      if(-7 <= angleBetweenPodAndCheckpoint && angleBetweenPodAndCheckpoint <= 7 && distanceBetweenPodAndCheckpoint > 1200) 125
-      else 75
+      var thrust = 70
+      if(-5 <= angleBetweenPodAndCheckpoint && angleBetweenPodAndCheckpoint <= 5) thrust = 150
+      if(distanceBetweenPodAndCheckpoint < 1100) thrust = 20
+      //else thrust = 70
+
+      thrust
     }
     def calculateAttackThrust(pod: Pod, targetPosition: Position): Int = {
       val angleBetweenPodAndTarget = getAngleBetweenPodAndCheckpoint(pod, targetPosition)
-      if(-10 <= angleBetweenPodAndTarget && angleBetweenPodAndTarget <= 10) 200
+      if(-10 <= angleBetweenPodAndTarget && angleBetweenPodAndTarget <= 10) 170
       else 100
     }
     def getAngleBetweenPodAndCheckpoint(pod: Pod, checkpointPosition: Position): Double = {
@@ -122,11 +126,11 @@ object Player extends App {
     def isCollisionWithEnemis(pod: Pod): Boolean = yourPods.exists(foePod => pod.position.distanceWith(foePod.position) < 850)
     def getNextSpeed(thrust: Int, vectorTowardTarget: Vector, actualSpeed: Vector): Vector = {
       val w = vectorTowardTarget
-//      System.err.println(s"w: $w")
-//      System.err.println(s"norme de w: ${w.getNorm}")
-//      System.err.println(s"w norme: ${w / 2}")
-//      System.err.println(s"w norme: ${w / w.getNorm}")
-//      System.err.println(s"w norme * thrust: ${(w / w.getNorm) * thrust}")
+      //      System.err.println(s"w: $w")
+      //      System.err.println(s"norme de w: ${w.getNorm}")
+      //      System.err.println(s"w norme: ${w / 2}")
+      //      System.err.println(s"w norme: ${w / w.getNorm}")
+      //      System.err.println(s"w norme * thrust: ${(w / w.getNorm) * thrust}")
       ((w / w.getNorm) * thrust + actualSpeed) * 0.86
     }
     def getNextPosition(actualPosition: Position, speed: Vector): Position = speed.toPosition + actualPosition
@@ -148,12 +152,12 @@ object Player extends App {
       return 12
     }
     def playForOnePod(pod: Pod): Unit = {
-      getBestThrust(pod, getPositionOfACheckpoint(pod.nextCheckpoint))
+      //      getBestThrust(pod, getPositionOfACheckpoint(pod.nextCheckpoint))
       if(pod.state == "neutral") {
         var thrust: Any = None
         val nextCheckpointPosition: Position = getPositionOfACheckpoint(pod.nextCheckpoint)
         if(!isCollisionWithEnemis(pod)) {
-          thrust = 100 //calculateThrust(pod, nextCheckpointPosition)
+          thrust = calculateThrust(pod, nextCheckpointPosition)
         }
         else {
           thrust = "SHIELD"
@@ -181,7 +185,7 @@ object Player extends App {
           pod.points = pod.points + 1.0
           pod.actualCheckpoint = pod.nextCheckpoint
         }
-//        System.err.println(s"id: ${pod.id}, $distanceBetweenPodAndCheckpoint, pts: ${pod.points}")
+        //        System.err.println(s"id: ${pod.id}, $distanceBetweenPodAndCheckpoint, pts: ${pod.points}")
       }
       val podSortedByPoints = pods.sortBy(pod => pod.points)(Ordering[Double].reverse)
       podSortedByPoints.indices.foreach(i => podSortedByPoints(i).rank = i + 1)
