@@ -2,6 +2,10 @@ import scala.collection.immutable
 
 case class Position(val x: Int, val y: Int) {
   override def toString: String = s"p($x, $y)"
+
+  def distanceWith(that: Position): Double = {
+    Math.sqrt((that.x - x) * (that.x - x) + (that.y - y) * (that.y - y))
+  }
 }
 
 case class Speed(val vx: Int, val vy: Int) {
@@ -70,18 +74,25 @@ object Player extends App {
     } yield unit
 
     val units = rawUnits.toList
-    val (reapers, wrecks) = units.partition(unit => unit.unitType == 0)
+    val (raw_reapers, raw_wrecks) = units.partition(unit => unit.unitType == 0)
+    val reapers = raw_reapers.map(reaper => reaper.asInstanceOf[Reaper])
+    val wrecks = raw_wrecks.map(wreck => wreck.asInstanceOf[Wreck])
     Console.err.println("==== reapers ====")
     Console.err.println(reapers.mkString("\n"))
     Console.err.println("==== wrecks ====")
     Console.err.println(wrecks.mkString("\n"))
 
-    val firstTarget = wrecks.head
+    val myReaper = reapers.filter(reaper => reaper.playerId == 0).head
+    Console.err.println("==== myReaper ====")
+    Console.err.println(myReaper)
 
-    // Write an action using println
-    // To debug: Console.err.println("Debug messages...")
+    val orderedWrecks = wrecks.sortBy(wreck => myReaper.position.distanceWith(wreck.position))
+    val nearestWreck = orderedWrecks.head
 
-    println(s"${firstTarget.position.x} ${firstTarget.position.y} 100")
+    Console.err.println("==== closest wreck ====")
+    Console.err.println(nearestWreck)
+
+    println(s"${nearestWreck.position.x} ${nearestWreck.position.y} 100")
     println("WAIT")
     println("WAIT")
   }
