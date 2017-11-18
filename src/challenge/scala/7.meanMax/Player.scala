@@ -19,16 +19,23 @@ class Unit(val unitId: Int,
   override def toString: String = s"unitId: $unitId, unitType: $unitType, radius: $radius, position: $position"
 }
 
-class Reaper(unitId: Int,
+class Looter(unitId: Int,
   unitType: Int,
   radius: Int,
   position: Position,
   val playerId: Int,
   val mass: Float,
-  val speed: Speed) extends Unit(unitId, unitType, radius, position) {
+  val speed: Speed,
+  val waterCapacity: Int) extends Unit(unitId, unitType, radius, position) {
 
   override def toString: String = s"unitId: $unitId, unitType: $unitType, playerId: $playerId, radius: $radius, " +
       s"mass: $mass, position: $position, speed: $speed"
+
+  def isInWreck(wreck: Wreck): Boolean = {
+    position.distanceWith(wreck.position) < wreck.radius
+  }
+
+  def stop: String = "WAIT"
 }
 
 class Wreck(unitId: Int,
@@ -66,34 +73,54 @@ object Player extends App {
       val vy = _vy.toInt
       val extra = _extra.toInt
       val extra2 = _extra2.toInt
-      val unit = if (unittype == 0) {
-        new Reaper(unitid, unittype, radius, Position(x, y), player, mass, Speed(vx, vy))
-      } else {
+      val unit = if (unittype == 4) {
         new Wreck(unitid, unittype, radius, Position(x, y), extra)
+      } else {
+        new Looter(unitid, unittype, radius, Position(x, y), player, mass, Speed(vx, vy), extra2)
       }
     } yield unit
 
     val units = rawUnits.toList
-    val (raw_reapers, raw_wrecks) = units.partition(unit => unit.unitType == 0)
-    val reapers = raw_reapers.map(reaper => reaper.asInstanceOf[Reaper])
-    val wrecks = raw_wrecks.map(wreck => wreck.asInstanceOf[Wreck])
+    val reapers = units.filter(unit => unit.unitType == 0).map(unit => unit.asInstanceOf[Looter])
+    val destroyers = units.filter(unit => unit.unitType == 1).map(unit => unit.asInstanceOf[Looter])
+    val tankers = units.filter(unit => unit.unitType == 3).map(unit => unit.asInstanceOf[Looter])
+    val wrecks = units.filter(unit => unit.unitType == 4).map(unit => unit.asInstanceOf[Wreck])
+
     Console.err.println("==== reapers ====")
     Console.err.println(reapers.mkString("\n"))
+    Console.err.println("==== destroyers ====")
+    Console.err.println(destroyers.mkString("\n"))
+    Console.err.println("==== tankers ====")
+    Console.err.println(tankers.mkString("\n"))
     Console.err.println("==== wrecks ====")
     Console.err.println(wrecks.mkString("\n"))
 
-    val myReaper = reapers.filter(reaper => reaper.playerId == 0).head
+    val myReaper = reapers.filter(repear => repear.playerId == 0 && repear.unitType == 0).head
+    val myDestroyer = destroyers.filter(destroyer => destroyer.playerId == 0 && destroyer.unitType == 1).head
+
     Console.err.println("==== myReaper ====")
     Console.err.println(myReaper)
+    Console.err.println("==== myDestoyer ====")
+    Console.err.println(myDestroyer)
 
-    val orderedWrecks = wrecks.sortBy(wreck => myReaper.position.distanceWith(wreck.position))
-    val nearestWreck = orderedWrecks.head
+    val orderedTankers = tankers.sortBy(tanker => myDestroyer.position.distanceWith(tanker.position))
+    val nearestTanker = orderedTankers.head
 
-    Console.err.println("==== closest wreck ====")
-    Console.err.println(nearestWreck)
+    Console.err.println("==== closest tanker ====")
+    Console.err.println(nearestTanker)
 
-    println(s"${nearestWreck.position.x} ${nearestWreck.position.y} 100")
-    println("WAIT")
+    val myReaperTarget = if (wrecks.nonEmpty) {
+      val orderedWrecks = wrecks.sortBy(wreck => myReaper.position.distanceWith(wreck.position))
+      val nearestWreck = orderedWrecks.head
+
+      Console.err.println("==== closest wreck ====")
+      Console.err.println(nearestWreck)
+
+      nearestWreck
+    } else nearestTanker
+
+    println(s"${myReaperTarget.position.x} ${myReaperTarget.position.y} 200")
+    println(s"${nearestTanker.position.x} ${nearestTanker.position.y} 200")
     println("WAIT")
   }
 }
