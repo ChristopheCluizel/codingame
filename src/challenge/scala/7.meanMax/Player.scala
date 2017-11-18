@@ -103,13 +103,22 @@ object Player extends App {
     Console.err.println("==== myDestoyer ====")
     Console.err.println(myDestroyer)
 
-    val orderedTankers = tankers.sortBy(tanker => myDestroyer.position.distanceWith(tanker.position))
-    val nearestTanker = orderedTankers.head
+    // get the tankers arrived in the big circle
+    val tankersInTheGame = tankers.filter(tanker => tanker.position.distanceWith(Position(0,0)) < 6000)
 
-    Console.err.println("==== closest tanker ====")
-    Console.err.println(nearestTanker)
+    // choose the target for my destroyer
+    val myDestroyerTarget = if(tankersInTheGame.nonEmpty) {
+      val orderedTankers = tankersInTheGame.sortBy(tanker => myDestroyer.position.distanceWith(tanker.position))
+      val nearestTanker = orderedTankers.head
 
-    val myReaperTarget = if (wrecks.nonEmpty) {
+      Console.err.println("==== closest tanker ====")
+      Console.err.println(nearestTanker)
+
+      nearestTanker
+    } else myReaper
+
+    // choose the target for my reaper
+    val myReaperTarget = if(wrecks.nonEmpty) {
       val orderedWrecks = wrecks.sortBy(wreck => myReaper.position.distanceWith(wreck.position))
       val nearestWreck = orderedWrecks.head
 
@@ -117,10 +126,10 @@ object Player extends App {
       Console.err.println(nearestWreck)
 
       nearestWreck
-    } else nearestTanker
+    } else myReaper
 
     println(s"${myReaperTarget.position.x} ${myReaperTarget.position.y} 200")
-    println(s"${nearestTanker.position.x} ${nearestTanker.position.y} 200")
+    println(s"${myDestroyerTarget.position.x} ${myDestroyerTarget.position.y} 300")
     println("WAIT")
   }
 }
