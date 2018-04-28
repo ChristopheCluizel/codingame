@@ -87,6 +87,10 @@ case class Board(
 
   def mySide = if (getQueen(0).position.x < 960) "left" else "right"
 
+  def getQueen(owner: Int): Unit = {
+    getUnits(owner, -1).head
+  }
+
   def getKnights(owner: Int): List[Unit] = {
     getUnits(owner, 0)
   }
@@ -139,10 +143,6 @@ case class Board(
       false
     }
   }
-
-  def getQueen(owner: Int): Unit = {
-    getUnits(owner, -1).head
-  }
 }
 
 case class Game(
@@ -191,6 +191,28 @@ case class IA() {
     var siteToBuild = sitesToBuild.head
     var buildType = -1
     val myMines = board.sites.filter(site => site.structureType == 0 && site.owner == 0)
+    val initialization: Boolean = board.getTowers(0).size < 3
+    val towerHealthTarget = if (initialization) 300 else 700
+
+    if (board.queenAttacked()) {
+      val safePosition = if (board.mySide == "left") {
+        val sitePosition = if (board.getTowers(0).size > 0) {
+          board.getTowers(0).sortBy(site => site.position.x).head.position
+        } else {
+          board.getBarracksKnight(0).sortBy(site => site.position.x).head.position
+        }
+        sitePosition.minus(Position(50, 0))
+      }
+      else {
+        val sitePosition = if (board.getTowers(0).size > 0) {
+          board.getTowers(0).sortBy(site => site.position.x).reverse.head.position
+        } else {
+          board.getBarracksKnight(0).sortBy(site => site.position.x).reverse.head.position
+        }
+        sitePosition.plus(Position(50, 0))
+      }
+      return s"MOVE ${safePosition.x} ${safePosition.y}"
+    }
 
     // upgrade mines
     if (myMines.size > 0) {
@@ -221,7 +243,7 @@ case class IA() {
 
     // upgrade towers
     else if (board.getTowers(0).size > 0) {
-      val ids = upgradeTowers(board, 300)
+      val ids = upgradeTowers(board, towerHealthTarget)
       if (ids.size > 0) {
         return s"BUILD ${ids.head} TOWER"
       }
@@ -260,20 +282,8 @@ case class IA() {
     //      buildType = 10
     //    }
 
-    if (board.queenAttacked()) {
-      val safePosition = if (board.mySide == "left") {
-        val towerPosition = board.getTowers(0).sortBy(site => site.position.x).head.position
-        towerPosition.minus(Position(50, 0))
-      }
-      else {
-        val towerPosition = board.getTowers(0).sortBy(site => site.position.x).reverse.head.position
-        towerPosition.plus(Position(50, 0))
-      }
-      return s"MOVE ${safePosition.x} ${safePosition.y}"
-    }
-
     // expand the towers
-    if (board.getTowers(0).size > 0 && board.getTowers(0).map(site => site.state).min > 300) {
+    if (board.getTowers(0).size > 0 && board.getTowers(0).map(site => site.state).min > 700) {
       val id = buildXTowers(board)
       return s"BUILD $id TOWER"
     }
