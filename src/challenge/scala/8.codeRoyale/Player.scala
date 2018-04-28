@@ -29,18 +29,22 @@ case class Unit(
 
 case class Site(
   val id: Int,
+  val remainingGold: Int, // -1 if unknown
+  val maxGoldRate: Int, // -1 if unknown
   val position: Position,
   val radius: Int,
-  val structureType: Int, // -1: No structure, 1: Tower 2: Barracks
+  val structureType: Int, // -1: No structure, 0: mine, 1: Tower, 2: Barracks
   val owner: Int, // -1 no structure, 0 friendly, 1 enemy
-  val remainingTrainingTurns: Int, // -1 if no structure, if tower remaining HP, else nb of turns
-  val creepType: Int // -1 if no structure, 0 for KNIGHT, 1 for ARCHER, 2 for GIANT. If tower attack radius
+  val state: Int, // -1 if no structure, if tower remaining HP, if mine golden rate, else nb of turns
+  val creepType: Int // -1 if no structure or mine, 0 for KNIGHT, 1 for ARCHER, 2 for GIANT. If tower attack radius
 ) {
 
-  override def toString: String = s"$structureTypeName site $id at $position with $radius radius is owned by " +
-      s"$ownerName with turn/HP $remainingTrainingTurns to build/or with $creepTypeName"
+  override def toString: String = s"$structureTypeName site $id at $position with $radius radius and max gold rate of" +
+      s" $maxGoldRate is owned by " +
+      s"$ownerName with turn/HP/golden rate $state to build/or with $creepTypeName"
 
   def structureTypeName = structureType match {
+    case 0 => "mine"
     case 1 => "tower"
     case 2 => "barrack"
     case _ => "NONE"
@@ -82,12 +86,12 @@ case class Board(
     getUnits(owner, 0)
   }
 
-  def getArchers(owner: Int): List[Unit] = {
-    getUnits(owner, 1)
-  }
-
   def getUnits(owner: Int, unitType: Int): List[Unit] = {
     units.filter(unit => unit.owner == owner && unit.unitType == unitType)
+  }
+
+  def getArchers(owner: Int): List[Unit] = {
+    getUnits(owner, 1)
   }
 
   def getBarracksKnight(owner: Int): List[Site] = {
@@ -114,26 +118,43 @@ case class Game(
 case class IA() {
   def buildNearestSite(board: Board): String = {
     val nearestSites: List[Site] = getNearestSitesForAUnit(board.getQueen(0), board.sites)
+    // structureType != 1 because a queen can not build on existing tower
     var siteToBuild = nearestSites.filter(site => (site.owner == -1 || site.owner == 1) && site.structureType != 1)
         .head
     var buildType = -1
+    val myMines = board.sites.filter(site => site.structureType == 0 && site.owner == 0)
+    // build mines
+    if (myMines.size < 1) {
+      buildType = 3
+      nearestSites.filter(site => (site.owner == -1 || site.owner == 1) && site.structureType != 1 && site.state != 0)
+          .head
+    }
+    // upgrade lowest golden rate mine
+    else if (myMines.filter(site => site.state < site.maxGoldRate).size > 0) {
+      siteToBuild = myMines.filter(site => site.state < site.maxGoldRate).sortBy(site => site.state).head
+      buildType = 3
+    }
     // get number of my knight barracks
-    if (board.sites.filter(site => site.creepType == 0 && site.owner == 0).size < 1) {
+    else if (board.sites.filter(site => site.creepType == 0 && site.owner == 0).size < 1) {
       buildType = 0
     }
     // get number of my giant barracks
-//    else if (board.sites.filter(site => site.creepType == 2 && site.owner == 0).size < 1) {
-//      buildType = 2
-//    }
+    //    else if (board.sites.filter(site => site.creepType == 2 && site.owner == 0).size < 1) {
+    //      buildType = 2
+    //    }
     // get number of my towers
-    else if (board.sites.filter(site => site.structureType == 1 && site.owner == 0).size < 4) {
+    else if (board.sites.filter(site => site.structureType == 1 && site.owner == 0).size < 3) {
       buildType = 10
+    }
+    // build 2 additional mines
+    else if (myMines.size < 3) {
+      buildType = 3
     }
     // repair towers with less HP
     else {
       siteToBuild = board.sites
           .filter(site => site.owner == 0 && site.structureType == 1)
-          .sortBy(site => site.remainingTrainingTurns)
+          .sortBy(site => site.state)
           .toList
           .head
       buildType = 10
@@ -143,6 +164,7 @@ case class IA() {
       case 0 => s"BUILD ${siteToBuild.id} BARRACKS-KNIGHT"
       case 1 => s"BUILD ${siteToBuild.id} BARRACKS-ARCHER"
       case 2 => s"BUILD ${siteToBuild.id} BARRACKS-GIANT"
+      case 3 => s"BUILD ${siteToBuild.id} MINE"
       case 10 => s"BUILD ${siteToBuild.id} TOWER"
       case _ => "WAIT"
     }
@@ -180,7 +202,7 @@ object Player extends App {
   val sites = for {
     i <- 0 until numsites
     val Array(siteid, x, y, radius) = for (i <- readLine split " ") yield i.toInt
-    val site = Site(siteid, Position(x, y), radius, -1, -1, 0, -1)
+    val site = Site(siteid, -1, -1, Position(x, y), radius, -1, -1, 0, -1)
   } yield site
 
   val board = Board(numsites, sites.toList, List())
@@ -203,7 +225,15 @@ object Player extends App {
       param2) = for (i <- readLine split " ") yield i
           .toInt
       val currentSite: Site = board.sites.filter(site => site.id == siteid).head
-    } yield Site(currentSite.id, currentSite.position, currentSite.radius, structuretype, owner, param1, param2)
+    } yield Site(currentSite.id,
+      ignore1,
+      ignore2,
+      currentSite.position,
+      currentSite.radius,
+      structuretype,
+      owner,
+      param1,
+      param2)
 
     board.sites = newSites.toList
 
@@ -215,7 +245,7 @@ object Player extends App {
 
     board.units = units.toList
 
-    //      Console.err.println(game)
+    //    Console.err.println(game)
 
     // First line: A valid queen action
     // Second line: A set of training instructions
