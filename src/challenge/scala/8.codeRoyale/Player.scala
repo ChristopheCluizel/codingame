@@ -37,9 +37,11 @@ case class Site(
 
   def structureTypeName = if (structureType == -1) "no structure" else "barracks"
 
-  def ownerName = if (owner == -1) "none" else if (owner == 0) "friendly" else "enemy"
+  def ownerName = if (owner == -1) "NONE" else if (owner == 0) "friendly" else "enemy"
 
-  def creepTypeName = if (creepType == -1) "none" else if (creepType == 0) "knight" else "archer"
+  def creepTypeName = if (creepType == -1) "NONE" else if (creepType == 0) "BARRACKS-KNIGHT" else "BARRACKS-ARCHER"
+
+  def creepCost: Int = if (creepType == 0) 80 else if (creepType == 1) 100 else 0
 }
 
 
@@ -51,6 +53,34 @@ case class Board(
   override def toString: String = s"==== Board ====\nnb of sites: $siteNumber\n${sites.mkString("\n")}\n${
     units.mkString("\n")
   }"
+
+  def getQueen(owner: Int): Unit = {
+    getUnits(owner, -1).head
+  }
+
+  def getKnights(owner: Int): List[Unit] = {
+    getUnits(owner, 0)
+  }
+
+  def getArchers(owner: Int): List[Unit] = {
+    getUnits(owner, 1)
+  }
+
+  def getUnits(owner: Int, unitType: Int): List[Unit] = {
+    units.filter(unit => unit.owner == owner && unit.unitType == unitType)
+  }
+
+  def getBarracksKnight(owner: Int): List[Site] = {
+    getBarracks(owner, 0)
+  }
+
+  def getBarracksArcher(owner: Int): List[Site] = {
+    getBarracks(owner, 1)
+  }
+
+  def getBarracks(owner: Int, creepType: Int): List[Site] = {
+    sites.filter(site => site.owner == owner && site.creepType == creepType)
+  }
 }
 
 case class Game(
@@ -59,6 +89,51 @@ case class Game(
   val board: Board
 ) {
   override def toString: String = s"goldAmount: $goldAmount, touchedSite: $touchedSiteId\n$board"
+}
+
+case class IA() {
+  def buildNearestSite(board: Board, creepType: Int): String = {
+    val nearestSites: List[Site] = getNearestSitesForAUnit(board.getQueen(0), board.sites)
+    if (nearestSites.size > 0) {
+      val siteToBuild = nearestSites.filter(site => site.owner == -1 || site.owner == 1).head
+      if (creepType == 0) {
+        s"BUILD ${siteToBuild.id} BARRACKS-KNIGHT"
+      } else if (creepType == 1) {
+        s"BUILD ${siteToBuild.id} BARRACKS-ARCHER"
+      } else {
+        ""
+      }
+    }
+    else {
+      s"WAIT"
+    }
+  }
+
+  def getNearestSitesForAUnit(unit: Unit, sites: List[Site]): List[Site] = {
+    sites.map(site => (site, unit.position.distanceWith(site.position)))
+        .sortBy { case (site, distance) => distance }
+        .map { case (site, distance) => site }
+        .toList
+  }
+
+  def trainUnits(board: Board, _gold: Int): String = {
+    var gold = _gold
+    val barracksKnightSite = board.getBarracksKnight(0)
+    // get nearest sites from ennemy
+    val nearestSites: List[Site] = getNearestSitesForAUnit(board.getQueen(1), barracksKnightSite)
+    val sitesToTrain: List[Site] = nearestSites.filter(site => site.creepType != -1)
+
+    val siteIdsToTrain: List[Int] = sitesToTrain.map { site =>
+      if (gold >= site.creepCost) {
+        gold = gold - site.creepCost
+        site.id
+      } else {
+        None
+      }
+    }.filter(site => site != None).asInstanceOf[List[Int]]
+    val siteIdsToTrainString = siteIdsToTrain.mkString(" ")
+    if (siteIdsToTrain.size > 0) "TRAIN " + siteIdsToTrainString else "TRAIN"
+  }
 }
 
 object Player extends App {
@@ -71,6 +146,7 @@ object Player extends App {
 
   val board = Board(numsites, sites.toList, List())
   val game = Game(0, -1, board)
+  val ia = IA()
 
   while (true) {
     val Array(gold, touchedsite) = for (i <- readLine split " ") yield i.toInt
@@ -98,7 +174,7 @@ object Player extends App {
 
     // First line: A valid queen action
     // Second line: A set of training instructions
-    println("BUILD 6 BARRACKS-KNIGHT")
-    println("TRAIN 6")
+    println(ia.buildNearestSite(board, 0))
+    println(ia.trainUnits(board, game.goldAmount))
   }
 }
