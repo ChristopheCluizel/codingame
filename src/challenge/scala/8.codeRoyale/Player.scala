@@ -12,36 +12,56 @@ case class Position(val x: Int, val y: Int) {
 case class Unit(
   val position: Position,
   val owner: Int, // 0 = Friendly; 1 = Enemy
-  val unitType: Int, // -1 for Queen, 0 for KNIGHT, 1 for ARCHER
+  val unitType: Int, // -1 for Queen, 0 for KNIGHT, 1 for ARCHER, 2 GIANT
   health: Int) {
 
   override def toString: String = s"$unitTypeName $health PV $position is $ownerName"
 
   def ownerName = if (owner == 0) "friendly" else "enemy"
 
-  def unitTypeName = if (unitType == -1) "queen" else if (unitType == 0) "knight" else "archer"
+  def unitTypeName = unitType match {
+    case -1 => "queen"
+    case 0 => "knight"
+    case 1 => "archer"
+    case 2 => "giant"
+  }
 }
 
 case class Site(
   val id: Int,
   val position: Position,
   val radius: Int,
-  val structureType: Int, // -1: No structure, 2: Barracks
+  val structureType: Int, // -1: No structure, 1: Tower 2: Barracks
   val owner: Int, // -1 no structure, 0 friendly, 1 enemy
-  val remainingTrainingTurns: Int, // -1 if no structure
-  val creepType: Int // -1 if no structure, 0 for KNIGHT, 1 for ARCHER
+  val remainingTrainingTurns: Int, // -1 if no structure, if tower remaining HP, else nb of turns
+  val creepType: Int // -1 if no structure, 0 for KNIGHT, 1 for ARCHER, 2 for GIANT. If tower attack radius
 ) {
 
   override def toString: String = s"$structureTypeName site $id at $position with $radius radius is owned by " +
-      s"$ownerName with $remainingTrainingTurns to build $creepTypeName"
+      s"$ownerName with turn/HP $remainingTrainingTurns to build/or with $creepTypeName"
 
-  def structureTypeName = if (structureType == -1) "no structure" else "barracks"
+  def structureTypeName = structureType match {
+    case 1 => "tower"
+    case 2 => "barrack"
+    case _ => "NONE"
+  }
 
   def ownerName = if (owner == -1) "NONE" else if (owner == 0) "friendly" else "enemy"
 
-  def creepTypeName = if (creepType == -1) "NONE" else if (creepType == 0) "BARRACKS-KNIGHT" else "BARRACKS-ARCHER"
+  def creepTypeName = creepType match {
+    case 0 => "BARRACKS-KNIGHT"
+    case 1 => "BARRACKS-ARCHER"
+    case 2 => "BARRACKS-GIANT"
+    case -1 => "NONE"
+    case _ => s"attack radius: $creepType"
+  }
 
-  def creepCost: Int = if (creepType == 0) 80 else if (creepType == 1) 100 else 0
+  def creepCost: Int = creepType match {
+    case 0 => 80
+    case 1 => 100
+    case 2 => 140
+    case _ => 0
+  }
 }
 
 
@@ -62,12 +82,12 @@ case class Board(
     getUnits(owner, 0)
   }
 
-  def getArchers(owner: Int): List[Unit] = {
-    getUnits(owner, 1)
-  }
-
   def getUnits(owner: Int, unitType: Int): List[Unit] = {
     units.filter(unit => unit.owner == owner && unit.unitType == unitType)
+  }
+
+  def getArchers(owner: Int): List[Unit] = {
+    getUnits(owner, 1)
   }
 
   def getBarracksKnight(owner: Int): List[Site] = {
@@ -95,7 +115,7 @@ case class IA() {
   def buildNearestSite(board: Board, creepType: Int): String = {
     val nearestSites: List[Site] = getNearestSitesForAUnit(board.getQueen(0), board.sites)
     if (nearestSites.size > 0) {
-      val siteToBuild = nearestSites.filter(site => site.owner == -1 || site.owner == 1).head
+      val siteToBuild = nearestSites.filter(site => (site.owner == -1 || site.owner == 1) && site.structureType != 1).head
       if (creepType == 0) {
         s"BUILD ${siteToBuild.id} BARRACKS-KNIGHT"
       } else if (creepType == 1) {
