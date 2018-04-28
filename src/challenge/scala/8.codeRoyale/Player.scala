@@ -136,7 +136,7 @@ case class Board(
     val ennemyDistances = units.filter(unit => unit.owner == 1 && unit.unitType == 0)
         .map(unit => (unit, myQueen.position.distanceWith(unit.position)))
         .filter { case (unit, distance) => distance < 300 }
-    if (ennemyDistances.size >= 2) {
+    if (ennemyDistances.size >= 2 && getTowers(0).size > 0) {
       Console.err.println("Queen under attack !!!")
       true
     } else {
@@ -192,26 +192,41 @@ case class IA() {
     var buildType = -1
     val myMines = board.sites.filter(site => site.structureType == 0 && site.owner == 0)
     val initialization: Boolean = board.getTowers(0).size < 3
-    val towerHealthTarget = if (initialization) 300 else 700
+    val towerHealthTarget = if (initialization) 500 else 700
+    val myTowers = board.getTowers(0)
 
     if (board.queenAttacked()) {
-      val safePosition = if (board.mySide == "left") {
-        val sitePosition = if (board.getTowers(0).size > 0) {
-          board.getTowers(0).sortBy(site => site.position.x).head.position
+      // if there are sites to build behind several towers, flee as the same time as building towers
+      if(myTowers.size > 0 && (sitesToBuild.filter(site => site.position.x < myTowers.map(site => site.position.x).min).size > 0 && sitesToBuild.filter(site => site.position.x > myTowers.map(site => site.position.x).max).size > 0)) {
+        val nearestSites: List[Site] = if(board.mySide == "left") {
+          getNearestSitesForAUnit(board.getQueen(0), sitesToBuild.filter(site => site.position.x < myTowers.map(site => site.position.x).min))
         } else {
-          board.getBarracksKnight(0).sortBy(site => site.position.x).head.position
+          getNearestSitesForAUnit(board.getQueen(0), sitesToBuild.filter(site => site.position.x > myTowers.map(site => site.position.x).max))
         }
-        sitePosition.minus(Position(50, 0))
+        val buildableSites = nearestSites.filter(site => (site.owner == -1 || site.owner == 1) && site.structureType != 1)
+        val buildableSite = buildableSites.head
+
+        return s"BUILD ${buildableSite.id} TOWER"
       }
       else {
-        val sitePosition = if (board.getTowers(0).size > 0) {
-          board.getTowers(0).sortBy(site => site.position.x).reverse.head.position
-        } else {
-          board.getBarracksKnight(0).sortBy(site => site.position.x).reverse.head.position
+        val safePosition = if (board.mySide == "left") {
+          val sitePosition = if (board.getTowers(0).size > 0) {
+            board.getTowers(0).sortBy(site => site.position.x).head.position
+          } else {
+            board.getBarracksKnight(0).sortBy(site => site.position.x).head.position
+          }
+          sitePosition.minus(Position(50, 0))
         }
-        sitePosition.plus(Position(50, 0))
+        else {
+          val sitePosition = if (board.getTowers(0).size > 0) {
+            board.getTowers(0).sortBy(site => site.position.x).reverse.head.position
+          } else {
+            board.getBarracksKnight(0).sortBy(site => site.position.x).reverse.head.position
+          }
+          sitePosition.plus(Position(50, 0))
+        }
+        return s"MOVE ${safePosition.x} ${safePosition.y}"
       }
-      return s"MOVE ${safePosition.x} ${safePosition.y}"
     }
 
     // upgrade mines
