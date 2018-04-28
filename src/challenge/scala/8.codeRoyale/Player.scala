@@ -7,6 +7,14 @@ case class Position(val x: Int, val y: Int) {
   def distanceWith(that: Position): Double = {
     Math.sqrt((that.x - x) * (that.x - x) + (that.y - y) * (that.y - y))
   }
+
+  def minus(that: Position): Position = {
+    Position(this.x - that.x, this.y - that.y)
+  }
+
+  def plus(that: Position): Position = {
+    Position(this.x + that.x, this.y + that.y)
+  }
 }
 
 case class Unit(
@@ -77,9 +85,7 @@ case class Board(
     units.mkString("\n")
   }"
 
-  def getQueen(owner: Int): Unit = {
-    getUnits(owner, -1).head
-  }
+  def mySide = if (getQueen(0).position.x < 960) "left" else "right"
 
   def getKnights(owner: Int): List[Unit] = {
     getUnits(owner, 0)
@@ -89,20 +95,16 @@ case class Board(
     getUnits(owner, 2)
   }
 
-  def getArchers(owner: Int): List[Unit] = {
-    getUnits(owner, 1)
-  }
-
   def getUnits(owner: Int, unitType: Int): List[Unit] = {
     units.filter(unit => unit.owner == owner && unit.unitType == unitType)
   }
 
-  def getBarracksKnight(owner: Int): List[Site] = {
-    getBarracks(owner, 0)
+  def getArchers(owner: Int): List[Unit] = {
+    getUnits(owner, 1)
   }
 
-  def getBarracks(owner: Int, creepType: Int): List[Site] = {
-    sites.filter(site => site.owner == owner && site.creepType == creepType)
+  def getBarracksKnight(owner: Int): List[Site] = {
+    getBarracks(owner, 0)
   }
 
   def getBarracksArcher(owner: Int): List[Site] = {
@@ -113,12 +115,33 @@ case class Board(
     getBarracks(owner, 2)
   }
 
+  def getBarracks(owner: Int, creepType: Int): List[Site] = {
+    sites.filter(site => site.owner == owner && site.creepType == creepType)
+  }
+
   def getTowers(owner: Int): List[Site] = {
     sites.filter(site => site.structureType == 1 && site.owner == owner)
   }
 
   def getMines(owner: Int): List[Site] = {
     sites.filter(site => site.structureType == 0 && site.owner == owner)
+  }
+
+  def queenAttacked(): Boolean = {
+    val myQueen = getQueen(0)
+    val ennemyDistances = units.filter(unit => unit.owner == 1 && unit.unitType == 0)
+        .map(unit => (unit, myQueen.position.distanceWith(unit.position)))
+        .filter { case (unit, distance) => distance < 300 }
+    if (ennemyDistances.size >= 2) {
+      Console.err.println("Queen under attack !!!")
+      true
+    } else {
+      false
+    }
+  }
+
+  def getQueen(owner: Int): Unit = {
+    getUnits(owner, -1).head
   }
 }
 
@@ -236,12 +259,26 @@ case class IA() {
     //    else if (myTowers.map(tower => tower.state).max > 100 && myTowers.size < 5) {
     //      buildType = 10
     //    }
-    // repair towers with less HP
+
+    if (board.queenAttacked()) {
+      val safePosition = if (board.mySide == "left") {
+        val towerPosition = board.getTowers(0).sortBy(site => site.position.x).head.position
+        towerPosition.minus(Position(50, 0))
+      }
+      else {
+        val towerPosition = board.getTowers(0).sortBy(site => site.position.x).reverse.head.position
+        towerPosition.plus(Position(50, 0))
+      }
+      return s"MOVE ${safePosition.x} ${safePosition.y}"
+    }
+
+    // expand the towers
     if (board.getTowers(0).size > 0 && board.getTowers(0).map(site => site.state).min > 300) {
       val id = buildXTowers(board)
       return s"BUILD $id TOWER"
     }
 
+    // repair towers with less HP
     if (board.getTowers(0).size > 0) {
       siteToBuild = board.sites
           .filter(site => site.owner == 0 && site.structureType == 1)
