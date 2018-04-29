@@ -136,7 +136,8 @@ case class Board(
     val ennemyDistances = units.filter(unit => unit.owner == 1 && unit.unitType == 0)
         .map(unit => (unit, myQueen.position.distanceWith(unit.position)))
         .filter { case (unit, distance) => distance < 300 }
-    if (ennemyDistances.size >= 2 && getTowers(0).size > 0) {
+    val queenUnderTowerAttack = getTowers(1).filter(site => myQueen.position.distanceWith(site.position) <= site.creepType).size > 0
+    if ((ennemyDistances.size >= 2 || queenUnderTowerAttack) && getTowers(0).size > 0) {
       Console.err.println("Queen under attack !!!")
       true
     } else {
@@ -191,11 +192,15 @@ case class IA() {
     var siteToBuild = sitesToBuild.head
     var buildType = -1
     val myMines = board.sites.filter(site => site.structureType == 0 && site.owner == 0)
-    val initialization: Boolean = board.getTowers(0).size < 3
+    val initialization: Boolean = board.getTowers(0).size < 2
     val towerHealthTarget = if (initialization) 500 else 700
     val myTowers = board.getTowers(0)
 
     if (board.queenAttacked()) {
+      if(board.getQueen(0).position.distanceWith(siteToBuild.position) < 100) {
+        return s"BUILD ${siteToBuild.id} TOWER"
+      }
+
       // if there are sites to build behind several towers, flee as the same time as building towers
       if(myTowers.size > 0 && (sitesToBuild.filter(site => site.position.x < myTowers.map(site => site.position.x).min).size > 0 && sitesToBuild.filter(site => site.position.x > myTowers.map(site => site.position.x).max).size > 0)) {
         val nearestSites: List[Site] = if(board.mySide == "left") {
@@ -229,11 +234,18 @@ case class IA() {
       }
     }
 
-    // upgrade mines
-    if (myMines.size > 0) {
-      val ids = upgradeMines(board)
-      if (ids.size > 0) {
-        return s"BUILD ${ids.head} MINE"
+    if(initialization) {
+      // upgrade mines
+      if (myMines.size > 0) {
+        val ids = upgradeMines(board)
+        if (ids.size > 0) {
+          return s"BUILD ${ids.head} MINE"
+        }
+        // build mines
+        else if (myMines.size < 3) {
+          val id = buildXMines(board)
+          return s"BUILD $id MINE"
+        }
       }
       // build mines
       else if (myMines.size < 3) {
@@ -241,20 +253,11 @@ case class IA() {
         return s"BUILD $id MINE"
       }
     }
-    // build mines
-    else if (myMines.size < 3) {
-      val id = buildXMines(board)
-      return s"BUILD $id MINE"
-    }
 
     // build a knight barrack
     if (board.sites.filter(site => site.creepType == 0 && site.owner == 0).size < 1) {
       return s"BUILD ${siteToBuild.id} BARRACKS-KNIGHT"
     }
-    // get number of my giant barracks
-    //    else if (board.sites.filter(site => site.creepType == 2 && site.owner == 0).size < 1) {
-    //      buildType = 2
-    //    }
 
     // upgrade towers
     if (board.getTowers(0).size > 0) {
@@ -275,43 +278,11 @@ case class IA() {
       return s"BUILD $id TOWER"
     }
 
-    // build 2 additional mines
-    //    else if (myMines.size < 3) {
-    //      buildType = 3
-    //      val mineBuildingSign = if(board.getBarracksKnight(0).map(site => site.position.x).max < 960) 1 else -1
-    //      val sitesOnTheLeft = sitesToBuild.filter(site => (site.position.x * mineBuildingSign) < (960 *
-    // mineBuildingSign) && site.remainingGold != 0)
-    //      siteToBuild = if (sitesOnTheLeft.size > 0) sitesOnTheLeft.head else siteToBuild
-    //    }
-    // add additional knight barracks
-    //    if (board.sites.filter(site => site.creepType == 0 && site.owner == 0).size < 2) {
-    //      buildType = 0
-    //    }
-    //    // build 2 additional mines if towers health > 100
-    //    else if (myTowers.map(tower => tower.state).max > 100 && myMines.size < 5) {
-    //      buildType = 3
-    //      val sitesOnTheLeft = sitesToBuild.filter(site => site.position.x < 700 && site.remainingGold != 0)
-    //      siteToBuild = if (sitesOnTheLeft.size > 0) sitesOnTheLeft.head else siteToBuild
-    //    }
-    //    else if (myTowers.map(tower => tower.state).max > 100 && myTowers.size < 5) {
-    //      buildType = 10
-    //    }
-
     // expand the towers
-    if (board.getTowers(0).size > 0 && board.getTowers(0).map(site => site.state).min > 700) {
+    if (board.getTowers(0).size > 0 && board.getQueen(0).position.distanceWith(siteToBuild.position) < 100) {
       val id = buildXTowers(board)
       return s"BUILD $id TOWER"
     }
-
-    // repair towers with less HP
-//    if (board.getTowers(0).size > 0) {
-//      siteToBuild = board.sites
-//          .filter(site => site.owner == 0 && site.structureType == 1)
-//          .sortBy(site => site.state)
-//          .toList
-//          .head
-//      buildType = 10
-//    }
 
     buildType match {
       case 0 => s"BUILD ${siteToBuild.id} BARRACKS-KNIGHT"
@@ -339,8 +310,15 @@ case class IA() {
   }
 
   def upgradeTowers(board: Board, limit: Int): List[Int] = {
-    val myTowers = getNearestSitesForAUnit(board.getQueen(0), board.getTowers(0).filter(site => site.state < limit))
-    myTowers.map(site => site.id)
+    val nearestSites = getNearestSitesForAUnit(board.getQueen(0), board.sites)
+    val buildableSites = nearestSites.filter(site => (site.owner == -1 || site.owner == 1) && site.structureType != 1)
+    if(board.getQueen(0).position.distanceWith(buildableSites.head.position) < 200) {
+      return buildableSites.map(site => site.id)
+    }
+    else {
+      val myTowers = getNearestSitesForAUnit(board.getQueen(0), board.getTowers(0).filter(site => site.state < limit))
+      return myTowers.map(site => site.id)
+    }
   }
 
   def buildXMines(board: Board): Int = {
