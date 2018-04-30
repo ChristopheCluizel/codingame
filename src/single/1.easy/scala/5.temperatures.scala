@@ -1,0 +1,2 @@
+import math._
+object Solution extends App{val n=readInt;val l=readLine split " ";if(n==0) println(0);val l1=l.map(i=>(i.toInt,abs(0-i.toInt))).sortBy(_._2).map(_._1);println(if(l1.size>1 && -1*l1(0)==l1(1)) max(l1(0),l1(1)) else l1.head)}
