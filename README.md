@@ -26,12 +26,12 @@ Complete : 100% | 58.9% ||
 
 Challenge | Ranking
 | :---: | :---:|
-[Code Royale](src/challenge/scala/8.codeRoyale) `Scala` | 162/2120
-[Mean Max](src/challenge/scala/7.meanMax) `Scala` | 1240/2512
-[Smash the Code]() `Scala` | 2048/2490
-[Coders Strike Back](src/challenge/scala/6.codersStrikeBack) `Scala` | 1254/2530
-[Code vs Zombies](src/challenge/scala/5.codeVSzombies) `Scala` | 779/3968
-[There is no Spoon](src/challenge/scala/4.thereIsNoSpoon) `Scala` | 457/1626
-[The Great Escape](src/challenge/scala/3.theGreatEscape.scala) `Scala` | 549/1153
-[Platinum Rift 2](src/challenge/scala/1.platinumRift.scala) `Scala` | 193/560
-[Platinum Rift](src/challenge/cpp/1.platinumRift.cpp) `Cpp` | 416/1080
+[Code Royale](src/challenge/scala/8.codeRoyale) `Scala` | 162 / 2120
+[Mean Max](src/challenge/scala/7.meanMax) `Scala` | 1240 / 2512
+Smash the Code `Scala` | 2048 / 2490
+[Coders Strike Back](src/challenge/scala/6.codersStrikeBack) `Scala` | 1254 / 2530
+[Code vs Zombies](src/challenge/scala/5.codeVSzombies) `Scala` | 779 / 3968
+[There is no Spoon](src/challenge/scala/4.thereIsNoSpoon) `Scala` | 457 / 1626
+[The Great Escape](src/challenge/scala/3.theGreatEscape.scala) `Scala` | 549 / 1153
+[Platinum Rift 2](src/challenge/scala/1.platinumRift.scala) `Scala` | 193 / 560
+[Platinum Rift](src/challenge/cpp/1.platinumRift.cpp) `Cpp` | 416 / 1080
