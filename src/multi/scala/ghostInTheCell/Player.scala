@@ -13,6 +13,8 @@ class Graph[X](nbNodes: Int) {
     }
   }
 
+  def listNodes = nodes.map { case (key, node) => node }.toList
+
   def addNode(key: Int, node: X) = nodes += (key -> node)
 
   def addEdge(key1: Int, key2: Int, value: Int) = adjacencyMatrix(key1)(key2) = value
@@ -124,7 +126,22 @@ case class Game(
   val factories: Graph[Factory],
   var troops: ArrayBuffer[Troop]
 ) {
-  override def toString: String = s"nbOfFactories: $nbOfFactories, nbOfEdges: $nbOfEdges\n==== factories ====\n$factories\n==== troops ==== \n${troops.mkString("\n")}"
+  override def toString: String = s"nbOfFactories: $nbOfFactories, nbOfEdges: $nbOfEdges\n==== factories " +
+      s"====\n$factories\n==== troops ==== \n${
+        troops.mkString("\n")
+      }"
+
+  def getMostProdFactories: List[Factory] = {
+    factories.listNodes.sortBy(factory => factory.production).reverse
+  }
+
+  def getFactories(owner: Int): List[Factory] = {
+    factories.listNodes.filter(factory => factory.owner == owner)
+  }
+}
+
+case class IA() {
+
 }
 
 object Player extends App {
@@ -133,6 +150,7 @@ object Player extends App {
 
   val graph = new Graph[Factory](factorycount)
   val game = Game(factorycount, linkcount, graph, ArrayBuffer())
+  val ia = IA()
 
   for (i <- 0 until linkcount) {
     val Array(factoryId1, factoryId2, distance) = for (i <- readLine split " ") yield i.toInt
@@ -163,7 +181,27 @@ object Player extends App {
 
     Console.err.println(game)
 
-    // Any valid action, such as "WAIT" or "MOVE source destination cyborgs"
-    println("WAIT")
+    val myStrongFactory = game.getFactories(1).sortBy(factory => factory.nbOfCyborgs).reverse.head
+    val targetFactories = game.factories
+        .listNodes
+        .filter(factory => factory.owner == 0 || factory.owner == -1)
+        .filter(factory => factory.nbOfCyborgs < myStrongFactory.nbOfCyborgs)
+        .sortBy(factory => factory.production)
+        .reverse
+    val order = if (targetFactories.length != 0) {
+      val targetFactory = targetFactories.head
+      s"MOVE ${myStrongFactory.id} ${targetFactory.id} ${myStrongFactory.nbOfCyborgs}"
+    } else {
+      val ennemyFactories = game.getFactories(-1)
+      if (ennemyFactories.length == 0) {
+        "WAIT"
+
+      } else {
+        val targetFactory = ennemyFactories.sortBy(factory => factory.nbOfCyborgs).head
+        s"MOVE ${myStrongFactory.id} ${targetFactory.id} ${myStrongFactory.nbOfCyborgs}"
+      }
+    }
+
+    println(order)
   }
 }
