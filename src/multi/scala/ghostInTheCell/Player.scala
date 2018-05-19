@@ -193,7 +193,14 @@ case class Game(
         } else {
           factory.importance = 3
         }
-      } else {
+      } else if (factory.production == 0) {
+        if (distanceWithMe < distanceWithEnemy) {
+          factory.importance = 7
+        } else {
+          factory.importance = 2
+        }
+      }
+      else {
         factory.importance = 0
       }
     }
@@ -216,11 +223,7 @@ case class Game(
     val enemyTroopsSum = ennemyTroops.map(troop => troop.nbOfCyborgs).sum
 
     (factory.owner == 0 && (myTroopsSum > enemyTroopsSum + factory.nbOfCyborgs)) || (factory.owner == 1 && (factory
-        .nbOfCyborgs + myTroopsSum) > enemyTroopsSum)
-  }
-
-  def getTroopsTowardsFactory(factory: Factory): List[Troop] = {
-    troops.filter(troop => troop.toFactoryId == factory.id).toList
+        .nbOfCyborgs + myTroopsSum) >= enemyTroopsSum)
   }
 
   def availableCyborgs(factory: Factory): Int = {
@@ -229,7 +232,14 @@ case class Game(
     val myTroopsSum = troopsTowardsFactory.filter(troop => troop.owner == 1).map(troop => troop.nbOfCyborgs).sum
     val enemyTroopsSum = troopsTowardsFactory.filter(troop => troop.owner == -1).map(troop => troop.nbOfCyborgs).sum
 
-    factory.nbOfCyborgs + myTroopsSum - enemyTroopsSum
+    if (factory.owner == 1)
+      factory.nbOfCyborgs + myTroopsSum - enemyTroopsSum
+    else
+      factory.nbOfCyborgs + enemyTroopsSum - myTroopsSum + factory.production * 8
+  }
+
+  def getTroopsTowardsFactory(factory: Factory): List[Troop] = {
+    troops.filter(troop => troop.toFactoryId == factory.id).toList
   }
 }
 
@@ -304,14 +314,12 @@ case class IA() {
     if (couldGo > 0) couldGo else 0
   }
 
-  //  TODO fix timeout because of error if all my troops are travelling and I don't have factory any more
   def colonize(game: Game): String = {
     val simulatedGame = game
 
     val targetFactories = simulatedGame.factories
         .listNodes
         .filter(factory => List(10, 9, 8).contains(factory.importance) && !game.factoryUnderControl(factory))
-    Console.err.println(targetFactories.mkString("\n"))
     val sortedTargetFactories = getNearestMyFactories(simulatedGame, targetFactories)
 
     sortedTargetFactories.flatMap { case (neutralFactory, t) =>
@@ -358,22 +366,92 @@ case class IA() {
         .reverse
         .sortBy { case (factory, helpNeeded) => helpNeeded }
 
-    Console.err.println("---- Safe ----")
-    Console.err.println(safeFactories.sortBy(x => x._1.id).mkString("\n"))
-    Console.err.println("---- Danger ----")
-    Console.err.println(factoriesInDanger.sortBy(x => x._1.id).mkString("\n"))
+    val numberToConquer: Int = {
+      if (game.factories.listNodes.filter(facto => facto.importance == 7 && facto.owner == 0).size > 0) 7
+      else if (game.factories.listNodes.filter(facto => facto.importance == 5 && facto.owner == 0).size > 0) 5
+      else if (game.factories.listNodes.filter(facto => facto.importance == 4 && facto.owner == 0).size > 0) 4
+      else if (game.factories.listNodes.filter(facto => facto.importance == 3 && facto.owner == 0).size > 0) 3
+      else 2
+    }
 
-    factoriesInDanger.flatMap { case (factory, helpNeeded) =>
-      safeFactories.map { case (myFacto, availableCyborgs) =>
-        if (availableCyborgs >= helpNeeded) {
-          myFacto.nbOfCyborgs = myFacto.nbOfCyborgs - helpNeeded
-          s"MOVE ${myFacto.id} ${factory.id} $helpNeeded"
+    // conquer the neutral factories
+    val conquerOrders: String = if (factoriesInDanger.size == 0) {
+      game.factories
+          .listNodes
+          .filter(factory => List(numberToConquer).contains(factory.importance) && factory.owner == 0)
+          .map { targetFactory =>
+            val (strongestFactory, nbCyborgs) = safeFactories
+                .filter { case (safeFacto, _) => safeFacto.id != targetFactory.id }
+                .sortBy { case (factory, nbCyborgs) => nbCyborgs }.reverse
+                .head
+            val troopToSend = nbCyborgs / 4
+            safeFactories.filter(t => t._1.id == strongestFactory.id).head._1.nbOfCyborgs = nbCyborgs - troopToSend
+            s"MOVE ${strongestFactory.id} ${targetFactory.id} $troopToSend"
+          }.filter(x => x != "").mkString(";")
+    } else {
+      ""
+    }
+
+    val numberToAttack: Int = {
+      if (game.factories.listNodes.filter(facto => facto.importance == 5 && facto.owner == -1).size > 0) 5
+      else if (game.factories.listNodes.filter(facto => facto.importance == 4 && facto.owner == -1).size > 0) 4
+      else 3
+    }
+
+    val attackOrders: String = if (factoriesInDanger.size == 0) {
+      game.factories
+          .listNodes
+          .filter(factory => List(numberToAttack).contains(factory.importance) && factory.owner == -1)
+          .map { targetFactory =>
+            val (strongestFactory, nbCyborgs) = safeFactories
+                .filter { case (safeFacto, _) => safeFacto.id != targetFactory.id }
+                .sortBy { case (factory, nbCyborgs) => nbCyborgs }.reverse
+                .head
+            val troopToSend = nbCyborgs / 4
+            safeFactories.filter(t => t._1.id == strongestFactory.id).head._1.nbOfCyborgs = nbCyborgs -
+                troopToSend
+            s"MOVE ${strongestFactory.id} ${targetFactory.id} $troopToSend"
+          }.filter(x => x != "").mkString(";")
+    } else {
+      ""
+    }
+
+    //    Console.err.println("---- My safe factories ----")
+    //    Console.err.println(safeFactories.sortBy(x => x._1.id).mkString("\n"))
+    //    Console.err.println("---- My factories in danger ----")
+    //    Console.err.println(factoriesInDanger.sortBy(x => x._1.id).mkString("\n"))
+
+    val holdOrders = factoriesInDanger.flatMap { case (factory, _helpNeeded) =>
+      var factorySaved = false
+      var helpNeeded = _helpNeeded
+
+      val sortedSafeFactories = safeFactories
+          .map { case (safeFacto, cyborgs) => (safeFacto, cyborgs, game.distanceBetween(factory, safeFacto)) }
+          .sortBy { case (safeFacto, cyborgs, distance) => distance }
+          .map { case (safeFacto, cyborgs, distance) => (safeFacto, cyborgs) }
+
+      sortedSafeFactories.map { case (myFacto, availableCyborgs) =>
+        if (helpNeeded == 0) factorySaved = true
+        // Console.err.println(s"${myFacto.id} has $availableCyborgs available cyborgs and factory ${
+        //          factory.id
+        //        } needs $helpNeeded")
+        if (availableCyborgs >= helpNeeded && !factorySaved) {
+          val sentCyborgs = helpNeeded
+          myFacto.nbOfCyborgs = myFacto.nbOfCyborgs - sentCyborgs
+          helpNeeded = helpNeeded - sentCyborgs
+          s"MOVE ${myFacto.id} ${factory.id} $sentCyborgs"
+        } else if (!factorySaved) {
+          val sentCyborgs = availableCyborgs
+          myFacto.nbOfCyborgs = myFacto.nbOfCyborgs - sentCyborgs
+          helpNeeded = helpNeeded - sentCyborgs
+          s"MOVE ${myFacto.id} ${factory.id} $sentCyborgs"
         } else {
-          myFacto.nbOfCyborgs = myFacto.nbOfCyborgs - availableCyborgs
-          s"MOVE ${myFacto.id} ${factory.id} $availableCyborgs"
+          ""
         }
       }
     }.filter(x => x != "").mkString(";")
+
+    List(holdOrders, conquerOrders, attackOrders).filter(x => x != "").mkString(";")
   }
 }
 
@@ -421,7 +499,7 @@ object Player extends App {
 
     game.weightFactories
 
-//    Console.err.println(game)
+    //    Console.err.println(game)
 
     //    TODO implement middle phase
     val moveOrder: String = if (game.initialPhase) {
@@ -430,7 +508,6 @@ object Player extends App {
     } else {
       Console.err.println("MIDDLE PHASE")
       ia.holdFactories(game)
-      //      ia.default_strategy(game)
     }
 
     val bombOrders: List[String] = ia.getBombOrder(game)
