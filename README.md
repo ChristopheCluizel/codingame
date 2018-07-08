@@ -17,15 +17,16 @@ Solved problems :
 [Chuck Norris](src/single/1.easy/cpp/8.chuckNorris.cpp) `Cpp` | [Dwarfs standing on the shoulders of giants](src/single/2.medium/scala/12.dwarfsStandingOnTheShouldersOfGiants.scala) `Scala` ||
 [MIME Type](src/single/1.easy/cpp/9.mime_type.cpp) `Cpp` | [APU: Init Phase](src/single/2.medium/scala/1.APU_initPhase.scala) `Scala` ||
 [Defibrillators](src/single/1.easy/cpp/10.defibrillators.cpp) `Cpp` | [Bender, a depressed robot](src/single/2.medium/scala/13.benderADepressedRobot.scala) `Scala`||
-[Horse-racing Duals](src/single/1.easy/cpp/11.horse_racing_duals.cpp) `Cpp` |||
-Done : `Cpp`(100%), `Scala`(54.5%) | `Cpp`(11.8%), `Scala`(47.1%) ||
-Complete : 100% | 58.9% ||
+[Horse-racing Duals](src/single/1.easy/cpp/11.horse_racing_duals.cpp) `Cpp` | [War](src/single/2.medium/scala/15.war.scala) `Scala` ||
+Done : `Cpp`(100%), `Scala`(54.5%) | `Cpp`(11.8%), `Scala`(51%) ||
+Complete : 100% | 61% ||
 
 
 - [Challenges](src/challenge) :
 
 Challenge | Ranking
 | :---: | :---:|
+[Code of Kutulu](src/challenge/scala/9.codeOfKutulu) `Scala` | 716 / 2092
 [Code Royale](src/challenge/scala/8.codeRoyale) `Scala` | 162 / 2120
 [Mean Max](src/challenge/scala/7.meanMax) `Scala` | 1240 / 2512
 Smash the Code `Scala` | 2048 / 2490
