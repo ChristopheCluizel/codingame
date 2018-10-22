@@ -1,5 +1,5 @@
 *.class
 bin
-idees
-*.txt
 .idea
+venv3
+*.pyc
