@@ -20,6 +20,8 @@ Solved problems :
 [Horse-racing Duals](src/single/1.easy/cpp/11.horse_racing_duals.cpp) `Cpp` | [War](src/single/2.medium/scala/15.war.scala) `Scala` ||
 []()| [ANEO sponsored puzzle](src/single/2.medium/scala/15.war.scala) `Python3` ||
 []()| [Network Cabling](src/single/2.medium/python/network_cabling/app.py) `Python3` ||
+[]()| [The Gift](src/single/2.medium/python/the_gift/app.py) `Python3` ||
+[]()| [Scrabble](src/single/2.medium/python/scrabble/app.py) `Python3` ||
 Done : `Cpp`(100%), `Scala`(54.5%) | `Cpp`(11.8%), `Scala`(51%) ||
 Complete : 100% | 61% ||
 
