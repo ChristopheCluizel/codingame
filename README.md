@@ -22,6 +22,7 @@ Solved problems :
 []()| [Network Cabling](src/single/2.medium/python/network_cabling/app.py) `Python3` ||
 []()| [The Gift](src/single/2.medium/python/the_gift/app.py) `Python3` ||
 []()| [Scrabble](src/single/2.medium/python/scrabble/app.py) `Python3` ||
+[]()| [Mayan Calculation](src/single/2.medium/python/mayan_calculation/app.py) `Python3` ||
 Done : `Cpp`(100%), `Scala`(54.5%) | `Cpp`(11.8%), `Scala`(51%) ||
 Complete : 100% | 61% ||
 
