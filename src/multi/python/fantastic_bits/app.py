@@ -2,8 +2,10 @@ import sys
 import math
 import copy
 
+
 def printd(message):
     print(message, file=sys.stderr)
+
 
 class Position:
     def __init__(self, x, y):
@@ -12,6 +14,9 @@ class Position:
 
     def __str__(self):
         return "({},{})".format(self.x, self.y)
+
+    def distance_with(self, that):
+        return math.sqrt((that.x - self.x) * (that.x - self.x) + (that.y - self.y) * (that.y - self.y))
 
 
 class Speed:
@@ -76,12 +81,15 @@ class Entity:
 
 
 class Snaffle(Entity):
-    def __init__(self, id, type, position, speed, state):
+    def __init__(self, id, position, speed, state):
         Entity.__init__(self, id, "SNAFFLE", position, speed, state)
+
+    def is_free(self):
+        return not self.state
 
 
 class Wizard(Entity):
-    def __init__(self, id, type, position, speed, state):
+    def __init__(self, id, position, speed, state):
         Entity.__init__(self, id, "WIZARD", position, speed, state)
 
 
@@ -89,7 +97,7 @@ class Map:
     def __init__(self):
         self.width = 16001
         self.height = 7501
-        self.goals = Goals
+        self.goals = Goals()
 
     def __str__(self):
         return ""
@@ -125,6 +133,52 @@ class Game:
             self.enemy_team,
             "\n".join([str(entity) for entity in self.entities])
         )
+
+    def get_wizards(self, team_id):
+        """
+
+        :param team_id:
+        :type team_id: integer
+        :return:
+        :rtype: list(Wizard)
+        """
+        if team_id == self.my_team.id:
+            return [Wizard(entity.id, entity.position, entity.speed, entity.state) for entity in self.entities if entity.type == "WIZARD"]
+        else:
+            return [Wizard(entity.id, entity.position, entity.speed, entity.state) for entity in self.entities if entity.type == "OPPONENT_WIZARD"]
+
+    def get_enemy_goal(self, my_team_id):
+        if my_team_id == 0:
+            return map.goals.get_center("RIGHT")
+        else:
+            return map.goals.get_center("LEFT")
+
+    def get_closest_snaffle(self, wizard_position):
+        """
+
+        :param wizard_position:
+        :type wizard_position: Position
+        :return:
+        :rtype: Snaffle
+        """
+        free_snaffles = [Snaffle(entity.id, entity.position, entity.speed, entity.state) for entity in self.entities if entity.type == "SNAFFLE" and entity.state == 0]
+        return sorted(free_snaffles, key=lambda snaffle: snaffle.position.distance_with(wizard_position))[0]
+
+    def play(self):
+        orders = []
+        my_wizards = self.get_wizards(self.my_team.id)
+
+        for wizard in my_wizards:
+            if wizard.state == 0:
+                target = self.get_closest_snaffle(wizard.position)
+                order = "MOVE {} {} 100".format(target.position.x, target.position.y)
+                orders.append(order)
+            else:
+                target_position = self.get_enemy_goal(self.my_team.id)
+                order = "THROW {} {} 500".format(target_position.x, target_position.y)
+                orders.append(order)
+
+        return orders
 
 
 my_team_id = int(input())  # if 0 you need to score on the right of the map, if 1 you need to score on the left
@@ -165,9 +219,9 @@ while True:
         entities.append(Entity(entity_id, entity_type, Position(x, y), Speed(vx, vy), state))
         game.entities = entities
 
-    printd(game)
+    # printd(game)
 
-    for i in range(2):
-        # Edit this line to indicate the action for each wizard (0 ≤ thrust ≤ 150, 0 ≤ power ≤ 500)
-        # i.e.: "MOVE x y thrust" or "THROW x y power"
-        print("MOVE 8000 3750 100")
+    order1, order2 = game.play()
+
+    print(order1)
+    print(order2)
