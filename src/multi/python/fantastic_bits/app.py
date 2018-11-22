@@ -162,7 +162,14 @@ class Game:
         :rtype: Snaffle
         """
         free_snaffles = [Snaffle(entity.id, entity.position, entity.speed, entity.state) for entity in self.entities if entity.type == "SNAFFLE" and entity.state == 0]
-        return sorted(free_snaffles, key=lambda snaffle: snaffle.position.distance_with(wizard_position))[0]
+        if len(free_snaffles) != 0:
+            return sorted(free_snaffles, key=lambda snaffle: snaffle.position.distance_with(wizard_position))[0]
+        else:
+            return None
+
+    def get_closest_enemy(self, wizard_position):
+        enemies = self.get_wizards(self.enemy_team.id)
+        return sorted(enemies, key=lambda enemy_wizard: enemy_wizard.position.distance_with(wizard_position))[0]
 
     def play(self):
         orders = []
@@ -171,8 +178,13 @@ class Game:
         for wizard in my_wizards:
             if wizard.state == 0:
                 target = self.get_closest_snaffle(wizard.position)
-                order = "MOVE {} {} 100".format(target.position.x, target.position.y)
-                orders.append(order)
+                if target is not None:
+                    order = "MOVE {} {} 150".format(target.position.x, target.position.y)
+                    orders.append(order)
+                else:
+                    target = self.get_closest_enemy(wizard.position)
+                    order = "MOVE {} {} 150".format(target.position.x, target.position.y)
+                    orders.append(order)
             else:
                 target_position = self.get_enemy_goal(self.my_team.id)
                 order = "THROW {} {} 500".format(target_position.x, target_position.y)
