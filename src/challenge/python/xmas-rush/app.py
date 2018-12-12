@@ -173,8 +173,14 @@ class Game:
     def get_my_player(self):
         return [player for player in self.players if player.id == 0][0]
 
-    def get_my_next_request_item(self):
-        return [item for item in self.items if item.player_id == 0][0]
+    def get_my_next_request_item(self, my_quests):
+        next_quest = my_quests[0]
+        my_quest_name = next_quest.name
+        return [item for item in self.items if item.player_id == 0 and item.name == my_quest_name][0]
+
+    def get_my_quests(self):
+        my_quests = [quest for quest in self.quests if quest.player_id == 0]
+        return my_quests
 
     def which_turn(self):
         if self.turn == 0:
@@ -211,7 +217,8 @@ class Game:
         my_player = self.get_my_player()
         my_position = my_player.position
         my_node_index = self.graph.position_to_node_index(my_position, map.size)
-        target_item = self.get_my_next_request_item()
+        my_quests = self.get_my_quests()
+        target_item = self.get_my_next_request_item(my_quests)
         target_item_node = self.graph.position_to_node_index(target_item.position, map.size)
 
         is_item_reachable = self.graph.is_reachable(my_node_index, target_item_node)
