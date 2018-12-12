@@ -173,6 +173,9 @@ class Game:
     def get_my_player(self):
         return [player for player in self.players if player.id == 0][0]
 
+    def get_enemy_player(self):
+        return [player for player in self.players if player.id == 1][0]
+
     def get_my_next_request_item(self, my_quests):
         next_quest = my_quests[0]
         my_quest_name = next_quest.name
@@ -242,10 +245,57 @@ class Game:
             return "PASS"
 
     def get_push_order(self):
-        random_index = random.randint(0, map.size - 1)
-        random_direction = random.choice(["LEFT", "RIGHT", "UP", "DOWN"])
+        def move_target_item(item, my_player):
+            item_position = item.position
+            # if our target item is in enemy's hand we move the enemy
+            if item_position.is_equal(Position(-2, -2)):
+                return move_enemy()
 
-        return "PUSH {} {}".format(random_index, random_direction)
+            # if we have the target item in hand
+            if item_position.is_equal(Position(-1, -1)):
+                # TODO: improve direction and index choice
+                target_direction = "DOWN"
+                target_position = min(self.map.size - 1, my_player.position.x + 1)
+
+                # print_debug("Got item in hand and move: {} {}".format(target_position, target_direction))
+
+                return "{} {}".format(target_position, target_direction)
+            # try to eject our target item
+            else:
+                # TODO: improve direction and index choice
+                target_direction = "LEFT"
+                target_position = item_position.y
+                # print_debug("Move to eject my item: {} {}".format(target_position, target_direction))
+                return "{} {}".format(target_position, target_direction)
+
+        # TODO: improve by ejecting the enemy from board
+        def move_enemy():
+            enemy_player = self.get_enemy_player()
+            enemy_position = enemy_player.position
+
+            target_position = enemy_position.x
+            target_direction = random.choice(["LEFT", "RIGHT", "UP", "DOWN"])
+
+            # print_debug("Move enemy: {} {}".format(target_position, target_direction))
+
+            return "{} {}".format(target_position, target_direction)
+
+        my_player = self.get_my_player()
+        my_position = my_player.position
+        my_node_index = self.graph.position_to_node_index(my_position, map.size)
+        my_quests = self.get_my_quests()
+        target_item = self.get_my_next_request_item(my_quests)
+        target_item_node = self.graph.position_to_node_index(target_item.position, map.size)
+
+        is_item_reachable = self.graph.is_reachable(my_node_index, target_item_node)
+
+        order = ""
+        if is_item_reachable:
+            order = move_enemy()
+        else:
+            order = move_target_item(target_item, my_player)
+
+        return "PUSH {}".format(order)
 
     def play(self):
         if self.which_turn() == "push":
