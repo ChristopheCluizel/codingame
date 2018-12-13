@@ -1,6 +1,7 @@
 import sys
 import math
 import random
+import copy
 
 
 def print_debug(description):
@@ -136,6 +137,41 @@ class Map:
     def add_tile(self, row_index, column_index, tile_string):
         self.tiles[column_index].append(self.string_to_tile(tile_string))
 
+    def simulate_move(self, my_player_position, tile, insertion_id, direction):
+        simulated_map = copy.deepcopy(self)
+        item_position = Position(0, 0)
+        new_my_player_position = my_player_position
+
+        if direction == "RIGHT":
+            item_position = Position(0, insertion_id)
+            for column_index, column in enumerate(self.tiles):
+                if column_index == 0:
+                    simulated_map.tiles[column_index][insertion_id] = tile
+                else:
+                    simulated_map.tiles[column_index][insertion_id] = self.tiles[column_index - 1][insertion_id]
+                if insertion_id == my_player_position.y:
+                    new_my_player_position = Position(my_player_position.x + 1, insertion_id)
+        if direction == "LEFT":
+            item_position = Position(len(self.tiles[0]) - 1, insertion_id)
+            for column_index, column in enumerate(self.tiles):
+                if column_index == self.size - 1:
+                    simulated_map.tiles[column_index][insertion_id] = tile
+                else:
+                    simulated_map.tiles[column_index][insertion_id] = self.tiles[column_index + 1][insertion_id]
+                if insertion_id == my_player_position.y:
+                    new_my_player_position = Position(my_player_position.x - 1, insertion_id)
+        if direction == "UP":
+            item_position = Position(insertion_id, len(self.tiles[0]) - 1)
+            simulated_map.tiles[insertion_id] = self.tiles[insertion_id][1:] + [tile]
+            if insertion_id == my_player_position.x:
+                new_my_player_position = Position(insertion_id, my_player_position.y - 1)
+        if direction == "DOWN":
+            item_position = Position(insertion_id, 0)
+            simulated_map.tiles[insertion_id] = [tile] + self.tiles[insertion_id][:-1]
+            if insertion_id == my_player_position.x:
+                new_my_player_position = Position(insertion_id, my_player_position.y + 1)
+        return simulated_map, item_position, new_my_player_position
+
 
 class Game:
     def __init__(self, turn, map, players, items, quests):
@@ -176,10 +212,9 @@ class Game:
     def get_enemy_player(self):
         return [player for player in self.players if player.id == 1][0]
 
-    def get_my_next_request_item(self, my_quests):
-        next_quest = my_quests[0]
-        my_quest_name = next_quest.name
-        return [item for item in self.items if item.player_id == 0 and item.name == my_quest_name][0]
+    def get_my_quest_items(self, my_quests):
+        my_quest_names = [quest.name for quest in my_quests]
+        return [item for item in self.items if item.player_id == 0 and item.name in my_quest_names]
 
     def get_my_quests(self):
         my_quests = [quest for quest in self.quests if quest.player_id == 0]
@@ -216,21 +251,16 @@ class Game:
         if start_tile.down and end_tile.up and node_position_start.y < node_position_end.y:
             return "DOWN"
 
-    def move(self):
-        my_player = self.get_my_player()
-        my_position = my_player.position
-        my_node_index = self.graph.position_to_node_index(my_position, map.size)
-        my_quests = self.get_my_quests()
-        target_item = self.get_my_next_request_item(my_quests)
-        target_item_node = self.graph.position_to_node_index(target_item.position, map.size)
+    def move(self, my_node_index, my_quest_items):
+        reachable_items = []
+        for item in my_quest_items:
+            target_item_node = self.graph.position_to_node_index(item.position, map.size)
+            is_item_reachable = self.graph.is_reachable(my_node_index, target_item_node)
+            if is_item_reachable:
+                reachable_items.append(item)
 
-        is_item_reachable = self.graph.is_reachable(my_node_index, target_item_node)
-
-        # print_debug("item: {} in {} reachable ? {}".format(target_item.name,
-        #                                                    target_item.position,
-        #                                                    is_item_reachable))
-
-        if is_item_reachable:
+        if len(reachable_items) != 0:
+            target_item_node = self.graph.position_to_node_index(reachable_items[0].position, map.size)
             moves = []
             path = self.graph.get_path(my_node_index, target_item_node)
             # print_debug("Path: {}".format(path))
@@ -238,13 +268,33 @@ class Game:
                 move_order = self.move_order_between_two_neighbours(path[move_index], path[min(len(path) - 1, move_index + 1)])
                 if move_order is not None:
                     moves.append(move_order)
-            # print_debug("move orders: {}".format(moves))
             return "MOVE {}".format(" ".join(moves))
         else:
             # TODO: what move if item not reachable ?
             return "PASS"
 
-    def get_push_order(self):
+    def get_push_order(self, my_player, my_quest_items):
+        def get_best_insertion(item, my_player):
+            for insertion_id in range(0, self.map.size - 1):
+                for direction in ["DOWN", "UP", "RIGHT", "LEFT"]:
+                    simulated_map, item_position, my_player_position = self.map.simulate_move(my_player.position, my_player.tile, insertion_id, direction)
+                    simulated_graph = Graph()
+                    simulated_graph.map_to_graph(simulated_map)
+                    my_player_index = simulated_graph.position_to_node_index(my_player_position, map.size)
+                    item_index = simulated_graph.position_to_node_index(item_position, map.size)
+
+                    # print_debug("my_position: {}, my_index: {}, item_position: {}, item_index: {}".format(my_player_position,
+                    #                                                                                       my_player_index,
+                    #                                                                                       item_position,
+                    #                                                                                       item_index))
+
+                    is_reachable = simulated_graph.is_reachable(my_player_index, item_index)
+                    # print_debug("{}, {} => {}".format(insertion_id, direction, is_reachable))
+                    if is_reachable:
+                        return insertion_id, direction
+
+            return None, None
+
         def move_target_item(item, my_player):
             item_position = item.position
             # if our target item is in enemy's hand we move the enemy
@@ -253,22 +303,39 @@ class Game:
 
             # if we have the target item in hand
             if item_position.is_equal(Position(-1, -1)):
-                # TODO: improve direction and index choice
-                target_direction = "DOWN"
-                target_position = min(self.map.size - 1, my_player.position.x + 1)
+                insertion_id, direction = get_best_insertion(item, my_player)
+                if insertion_id is None and direction is None:
+                    # print_debug("Random insertion")
+                    insertion_id = random.randint(0, self.map.size - 1)
+                    direction = random.choice(["LEFT", "RIGHT", "UP", "DOWN"])
 
-                # print_debug("Got item in hand and move: {} {}".format(target_position, target_direction))
+                # print_debug("Got item '{}' in hand and move: {} to the {}".format(item.name, insertion_id, direction))
 
-                return "{} {}".format(target_position, target_direction)
+                return "{} {}".format(insertion_id, direction)
+
             # try to eject our target item
             else:
-                # TODO: improve direction and index choice
-                target_direction = "LEFT"
-                target_position = item_position.y
-                # print_debug("Move to eject my item: {} {}".format(target_position, target_direction))
+                x = item.position.x
+                y = item.position.y
+                # (side of the board, distance from item to the side of the board)
+                distances_from_side = [
+                    ("LEFT", abs(x - 0)),
+                    ("RIGHT", abs((self.map.size - 1) - x)),
+                    ("UP", abs(y - 0)),
+                    ("DOWN", abs((self.map.size - 1) - y))
+                ]
+                closest_side_tuple = sorted(distances_from_side, key=lambda tuple: tuple[1])[0]
+
+                target_direction = closest_side_tuple[0]
+                if target_direction in ["RIGHT", "LEFT"]:
+                    target_position = y
+                else:
+                    target_position = x
+
+                # print_debug("Move to eject my item '{}': row {} to the {}".format(item.name, target_position, target_direction))
                 return "{} {}".format(target_position, target_direction)
 
-        # TODO: improve by ejecting the enemy from board
+        # TODO: improve by ejecting the enemy from board ?
         def move_enemy():
             enemy_player = self.get_enemy_player()
             enemy_position = enemy_player.position
@@ -276,32 +343,62 @@ class Game:
             target_position = enemy_position.x
             target_direction = random.choice(["LEFT", "RIGHT", "UP", "DOWN"])
 
-            # print_debug("Move enemy: {} {}".format(target_position, target_direction))
+            # print_debug("Move enemy: {} to the {}".format(target_position, target_direction))
 
             return "{} {}".format(target_position, target_direction)
 
-        my_player = self.get_my_player()
-        my_position = my_player.position
-        my_node_index = self.graph.position_to_node_index(my_position, map.size)
-        my_quests = self.get_my_quests()
-        target_item = self.get_my_next_request_item(my_quests)
-        target_item_node = self.graph.position_to_node_index(target_item.position, map.size)
+        def get_best_quest_item(items):
+            """
+            Find the best quest item to move (or get item in our hand)
+            :param items:
+            :type items: list(Item)
+            :return:
+            :rtype: Item
+            """
+            for item in items:  # select item in our hands
+                if item.position.is_equal(Position(-1, -1)):
+                    return item
 
-        is_item_reachable = self.graph.is_reachable(my_node_index, target_item_node)
+            if len([item for item in items if not item.position.is_equal(Position(-2, -2))]) != 0:
+                res = []
+                for item in items:  # select item next to side of the board
+                    x = item.position.x
+                    y = item.position.y
+                    minimum = min(abs(x - 0), abs((self.map.size - 1) - x), abs(y - 0), abs((self.map.size - 1) - y))
+                    res.append((item, minimum))
+                return sorted(res, key=lambda tuple: tuple[1])[0][0]
+            else:
+                # default
+                return items[0]
+
+        my_node_index = self.graph.position_to_node_index(my_player.position, map.size)
+        reachable_items = []
+        for item in my_quest_items:
+            target_item_node = self.graph.position_to_node_index(item.position, map.size)
+            is_item_reachable = self.graph.is_reachable(my_node_index, target_item_node)
+            if is_item_reachable:
+                reachable_items.append(item)
 
         order = ""
-        if is_item_reachable:
+        if len(reachable_items) != 0:
             order = move_enemy()
         else:
-            order = move_target_item(target_item, my_player)
+            best_item = get_best_quest_item(my_quest_items)
+            order = move_target_item(best_item, my_player)
 
         return "PUSH {}".format(order)
 
     def play(self):
+        my_player = self.get_my_player()
+        my_position = my_player.position
+        my_node_index = self.graph.position_to_node_index(my_position, map.size)
+        my_quests = self.get_my_quests()
+        my_quest_items = self.get_my_quest_items(my_quests)
+
         if self.which_turn() == "push":
-            return self.get_push_order()
+            return self.get_push_order(my_player, my_quest_items)
         else:
-            return "{}".format(self.move())
+            return "{}".format(self.move(my_node_index, my_quest_items))
 
 
 class Graph:
