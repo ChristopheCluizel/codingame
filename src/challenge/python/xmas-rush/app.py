@@ -3,9 +3,12 @@ import math
 import random
 import copy
 
+DEBUG = False
+
 
 def print_debug(description):
-    print(description, file=sys.stderr)
+    if DEBUG:
+        print(description, file=sys.stderr)
 
 
 class Position:
@@ -137,40 +140,54 @@ class Map:
     def add_tile(self, row_index, column_index, tile_string):
         self.tiles[column_index].append(self.string_to_tile(tile_string))
 
-    def simulate_move(self, my_player_position, tile, insertion_id, direction):
+    def simulate_move(self, my_player_position, tile, insertion_id, direction, quest_items):
         simulated_map = copy.deepcopy(self)
-        item_position = Position(0, 0)
+        tile_position = Position(0, 0)
         new_my_player_position = my_player_position
+        new_items = copy.deepcopy(quest_items)
 
         if direction == "RIGHT":
-            item_position = Position(0, insertion_id)
+            tile_position = Position(0, insertion_id)
+            for item in new_items:
+                if item.position.y == insertion_id:
+                    item.position.x = item.position.x + 1
             for column_index, column in enumerate(self.tiles):
                 if column_index == 0:
                     simulated_map.tiles[column_index][insertion_id] = tile
                 else:
                     simulated_map.tiles[column_index][insertion_id] = self.tiles[column_index - 1][insertion_id]
                 if insertion_id == my_player_position.y:
-                    new_my_player_position = Position(my_player_position.x + 1, insertion_id)
+                    new_my_player_position = Position((my_player_position.x + 1) % self.size, insertion_id)
         if direction == "LEFT":
-            item_position = Position(len(self.tiles[0]) - 1, insertion_id)
+            tile_position = Position(len(self.tiles[0]) - 1, insertion_id)
+            for item in new_items:
+                if item.position.y == insertion_id:
+                    item.position.x = item.position.x - 1
             for column_index, column in enumerate(self.tiles):
                 if column_index == self.size - 1:
                     simulated_map.tiles[column_index][insertion_id] = tile
                 else:
                     simulated_map.tiles[column_index][insertion_id] = self.tiles[column_index + 1][insertion_id]
                 if insertion_id == my_player_position.y:
-                    new_my_player_position = Position(my_player_position.x - 1, insertion_id)
+                    new_my_player_position = Position((my_player_position.x - 1) % self.size, insertion_id)
         if direction == "UP":
-            item_position = Position(insertion_id, len(self.tiles[0]) - 1)
+            tile_position = Position(insertion_id, len(self.tiles[0]) - 1)
+            for item in new_items:
+                if item.position.x == insertion_id:
+                    item.position.y = item.position.y - 1
             simulated_map.tiles[insertion_id] = self.tiles[insertion_id][1:] + [tile]
             if insertion_id == my_player_position.x:
-                new_my_player_position = Position(insertion_id, my_player_position.y - 1)
+                new_my_player_position = Position(insertion_id, (my_player_position.y - 1) % self.size)
         if direction == "DOWN":
-            item_position = Position(insertion_id, 0)
+            tile_position = Position(insertion_id, 0)
+            for item in new_items:
+                if item.position.x == insertion_id:
+                    item.position.y = item.position.y + 1
             simulated_map.tiles[insertion_id] = [tile] + self.tiles[insertion_id][:-1]
             if insertion_id == my_player_position.x:
-                new_my_player_position = Position(insertion_id, my_player_position.y + 1)
-        return simulated_map, item_position, new_my_player_position
+                new_my_player_position = Position(insertion_id, (my_player_position.y + 1) % self.size)
+
+        return simulated_map, tile_position, new_my_player_position, new_items
 
 
 class Game:
@@ -260,41 +277,23 @@ class Game:
                 reachable_items.append(item)
 
         if len(reachable_items) != 0:
-            target_item_node = self.graph.position_to_node_index(reachable_items[0].position, map.size)
             moves = []
-            path = self.graph.get_path(my_node_index, target_item_node)
-            # print_debug("Path: {}".format(path))
-            for move_index, move_node in enumerate(path):
-                move_order = self.move_order_between_two_neighbours(path[move_index], path[min(len(path) - 1, move_index + 1)])
-                if move_order is not None:
-                    moves.append(move_order)
-            return "MOVE {}".format(" ".join(moves))
+            for i, item in enumerate(reachable_items):
+                if i > 0:
+                    my_node_index = self.graph.position_to_node_index(reachable_items[i - 1].position, map.size)
+                target_item_node = self.graph.position_to_node_index(item.position, map.size)
+                path = self.graph.get_path(my_node_index, target_item_node)
+                # print_debug("Path: {}".format(path))
+                for move_index, move_node in enumerate(path):
+                    move_order = self.move_order_between_two_neighbours(path[move_index], path[min(len(path) - 1, move_index + 1)])
+                    if move_order is not None:
+                        moves.append(move_order)
+            return "MOVE {}".format(" ".join(moves[0:20]))
         else:
             # TODO: what move if item not reachable ?
             return "PASS"
 
     def get_push_order(self, my_player, my_quest_items):
-        def get_best_insertion(item, my_player):
-            for insertion_id in range(0, self.map.size - 1):
-                for direction in ["DOWN", "UP", "RIGHT", "LEFT"]:
-                    simulated_map, item_position, my_player_position = self.map.simulate_move(my_player.position, my_player.tile, insertion_id, direction)
-                    simulated_graph = Graph()
-                    simulated_graph.map_to_graph(simulated_map)
-                    my_player_index = simulated_graph.position_to_node_index(my_player_position, map.size)
-                    item_index = simulated_graph.position_to_node_index(item_position, map.size)
-
-                    # print_debug("my_position: {}, my_index: {}, item_position: {}, item_index: {}".format(my_player_position,
-                    #                                                                                       my_player_index,
-                    #                                                                                       item_position,
-                    #                                                                                       item_index))
-
-                    is_reachable = simulated_graph.is_reachable(my_player_index, item_index)
-                    # print_debug("{}, {} => {}".format(insertion_id, direction, is_reachable))
-                    if is_reachable:
-                        return insertion_id, direction
-
-            return None, None
-
         def move_target_item(item, my_player):
             item_position = item.position
             # if our target item is in enemy's hand we move the enemy
@@ -303,13 +302,11 @@ class Game:
 
             # if we have the target item in hand
             if item_position.is_equal(Position(-1, -1)):
-                insertion_id, direction = get_best_insertion(item, my_player)
-                if insertion_id is None and direction is None:
-                    # print_debug("Random insertion")
-                    insertion_id = random.randint(0, self.map.size - 1)
-                    direction = random.choice(["LEFT", "RIGHT", "UP", "DOWN"])
+                print_debug("Random insertion")
+                insertion_id = random.randint(0, self.map.size - 1)
+                direction = random.choice(["LEFT", "RIGHT", "UP", "DOWN"])
 
-                # print_debug("Got item '{}' in hand and move: {} to the {}".format(item.name, insertion_id, direction))
+                print_debug("Got item '{}' in hand and move: {} to the {}".format(item.name, insertion_id, direction))
 
                 return "{} {}".format(insertion_id, direction)
 
@@ -332,7 +329,7 @@ class Game:
                 else:
                     target_position = x
 
-                # print_debug("Move to eject my item '{}': row {} to the {}".format(item.name, target_position, target_direction))
+                print_debug("Move to eject my item '{}': row {} to the {}".format(item.name, target_position, target_direction))
                 return "{} {}".format(target_position, target_direction)
 
         # TODO: improve by ejecting the enemy from board ?
@@ -355,10 +352,6 @@ class Game:
             :return:
             :rtype: Item
             """
-            for item in items:  # select item in our hands
-                if item.position.is_equal(Position(-1, -1)):
-                    return item
-
             if len([item for item in items if not item.position.is_equal(Position(-2, -2))]) != 0:
                 res = []
                 for item in items:  # select item next to side of the board
@@ -370,6 +363,26 @@ class Game:
             else:
                 # default
                 return items[0]
+
+        def create_path(items, my_player):
+            for insertion_id in range(0, self.map.size - 1):
+                for direction in ["DOWN", "UP", "RIGHT", "LEFT"]:
+                    simulated_map, tile_position, my_player_position, new_items = self.map.simulate_move(my_player.position, my_player.tile, insertion_id, direction, items)
+                    simulated_graph = Graph()
+                    simulated_graph.map_to_graph(simulated_map)
+                    my_player_index = simulated_graph.position_to_node_index(my_player_position, map.size)
+
+                    for item in new_items:
+                        # print_debug("insertion_id: {}, direction: {}, new item: {}".format(insertion_id, direction, item))
+                        if item.position.is_equal(Position(-1, -1)):
+                            item.position = tile_position
+                        item_index = simulated_graph.position_to_node_index(item.position, map.size)
+                        is_reachable = simulated_graph.is_reachable(my_player_index, item_index)
+                        if is_reachable:
+                            print_debug("Can create path to reach item: {} with row {} to the {}".format(item.name, insertion_id, direction))
+                            return insertion_id, direction
+
+            return None, None
 
         my_node_index = self.graph.position_to_node_index(my_player.position, map.size)
         reachable_items = []
@@ -383,8 +396,12 @@ class Game:
         if len(reachable_items) != 0:
             order = move_enemy()
         else:
-            best_item = get_best_quest_item(my_quest_items)
-            order = move_target_item(best_item, my_player)
+            insertion_id, direction = create_path(my_quest_items, my_player)
+            if insertion_id is not None and direction is not None:
+                order = "{} {}".format(insertion_id, direction)
+            else:
+                best_item = get_best_quest_item(my_quest_items)
+                order = move_target_item(best_item, my_player)
 
         return "PUSH {}".format(order)
 
