@@ -365,7 +365,7 @@ class Game:
                 return items[0]
 
         def create_path(items, my_player):
-            for insertion_id in range(0, self.map.size - 1):
+            for insertion_id in range(0, self.map.size):
                 for direction in ["DOWN", "UP", "RIGHT", "LEFT"]:
                     simulated_map, tile_position, my_player_position, new_items = self.map.simulate_move(my_player.position, my_player.tile, insertion_id, direction, items)
                     simulated_graph = Graph()
