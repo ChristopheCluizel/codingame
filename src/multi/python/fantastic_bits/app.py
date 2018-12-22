@@ -2,9 +2,11 @@ import sys
 import math
 import copy
 
+DEBUG = False
 
 def printd(message):
-    print(message, file=sys.stderr)
+    if DEBUG:
+        print(message, file=sys.stderr)
 
 
 class Position:
@@ -167,6 +169,9 @@ class Game:
         else:
             return None
 
+    def get_bludgers(self):
+        return [entity for entity in self.entities if entity.type == "BLUDGER"]
+
     def get_closest_enemy(self, wizard_position):
         enemies = self.get_wizards(self.enemy_team.id)
         return sorted(enemies, key=lambda enemy_wizard: enemy_wizard.position.distance_with(wizard_position))[0]
@@ -174,23 +179,38 @@ class Game:
     def play(self):
         orders = []
         my_wizards = self.get_wizards(self.my_team.id)
+        bludgers = self.get_bludgers()
 
         for wizard in my_wizards:
+            # if wizard.state == 0:
+            #     can_attack_bludgers = [bludger for bludger in bludgers if bludger.state != wizard.id]
+            #     closest_bludgers = sorted(can_attack_bludgers, key=lambda bludger: bludger.position.distance_with(wizard.position))
+            #
+            #     if len(closest_bludgers) != 0 and closest_bludgers[0].position.distance_with(wizard.position) <= 1000:
+            #         orders.append("PETRIFICUS {}".format(closest_bludgers[0].id))
+
+            # wizard has no snaffle
             if wizard.state == 0:
                 target = self.get_closest_snaffle(wizard.position)
                 if target is not None:
-                    order = "MOVE {} {} 150".format(target.position.x, target.position.y)
+                    if self.my_team.magic >= 15:
+                        order = "ACCIO {}".format(target.id)
+                    else:
+                        order = "MOVE {} {} 150".format(target.position.x, target.position.y)
                     orders.append(order)
                 else:
                     target = self.get_closest_enemy(wizard.position)
                     order = "MOVE {} {} 150".format(target.position.x, target.position.y)
                     orders.append(order)
             else:
-                target_position = self.get_enemy_goal(self.my_team.id)
+                goal_position = self.get_enemy_goal(self.my_team.id)
+
+                target_position = goal_position
+
                 order = "THROW {} {} 500".format(target_position.x, target_position.y)
                 orders.append(order)
 
-        return orders
+        return orders[0:2]
 
 
 my_team_id = int(input())  # if 0 you need to score on the right of the map, if 1 you need to score on the left
@@ -231,7 +251,7 @@ while True:
         entities.append(Entity(entity_id, entity_type, Position(x, y), Speed(vx, vy), state))
         game.entities = entities
 
-    # printd(game)
+    printd(game)
 
     order1, order2 = game.play()
 
