@@ -4,6 +4,7 @@ import copy
 
 DEBUG = False
 
+
 def printd(message):
     if DEBUG:
         print(message, file=sys.stderr)
@@ -53,6 +54,12 @@ class Goals:
             return Position(0, 3750)
         else:
             return Position(16000, 3750)
+
+    def get_goal(self, side):
+        if side == "LEFT":
+            return self.left_goal
+        else:
+            return self.right_goal
 
 
 class Pole:
@@ -149,25 +156,31 @@ class Game:
         else:
             return [Wizard(entity.id, entity.position, entity.speed, entity.state) for entity in self.entities if entity.type == "OPPONENT_WIZARD"]
 
-    def get_enemy_goal(self, my_team_id):
+    def get_enemy_goal_center_position(self, my_team_id):
         if my_team_id == 0:
             return map.goals.get_center("RIGHT")
         else:
             return map.goals.get_center("LEFT")
 
-    def get_closest_snaffle(self, wizard_position):
+    def get_enemy_goal(self, my_team_id):
+        if my_team_id == 0:
+            return map.goals.get_goal("RIGHT")
+        else:
+            return map.goals.get_goal("LEFT")
+
+    def get_closest_snaffles(self, wizard_position):
         """
 
         :param wizard_position:
         :type wizard_position: Position
         :return:
-        :rtype: Snaffle
+        :rtype: list(Snaffle)
         """
         free_snaffles = [Snaffle(entity.id, entity.position, entity.speed, entity.state) for entity in self.entities if entity.type == "SNAFFLE" and entity.state == 0]
         if len(free_snaffles) != 0:
-            return sorted(free_snaffles, key=lambda snaffle: snaffle.position.distance_with(wizard_position))[0]
+            return sorted(free_snaffles, key=lambda snaffle: snaffle.position.distance_with(wizard_position))
         else:
-            return None
+            return []
 
     def get_bludgers(self):
         return [entity for entity in self.entities if entity.type == "BLUDGER"]
@@ -176,34 +189,84 @@ class Game:
         enemies = self.get_wizards(self.enemy_team.id)
         return sorted(enemies, key=lambda enemy_wizard: enemy_wizard.position.distance_with(wizard_position))[0]
 
+    def is_snaffle_behind(self, wizard_position, snaffle_position):
+        if self.my_team.id == 0:
+            return wizard_position.x > snaffle_position.x
+        elif self.my_team.id == 1:
+            return wizard_position.x < snaffle_position.x
+
+    def can_wizard_shoot(self, wizard_position, snaffle):
+        pole_radius = 300
+        snaffle_position = snaffle.position
+        x_a = wizard_position.x
+        y_a = wizard_position.y
+        x_b = snaffle_position.x
+        y_b = snaffle_position.y
+        x_goal = self.get_enemy_goal(self.my_team.id)[0].position.x
+        y_goal = [self.get_enemy_goal(self.my_team.id)[0].position.y, self.get_enemy_goal(self.my_team.id)[1].position.y]
+
+        div = (x_b - x_a)
+        if div == 0:
+            div = 1
+        y = ((y_b - y_a) / div) * (x_goal - x_a) + y_a
+
+        # printd("target shoot position: {}, goal y: {}".format(str(Position(x_goal, y)), y_goal))
+        # printd("can shoot {}: {}".format(snaffle.id, (y_goal[0] <= y <= y_goal[1])))
+
+        return y_goal[0] + pole_radius <= y <= y_goal[1] - pole_radius
+
+    def no_entity_behind_snaffle(self, current_entity):
+        if self.my_team.id == 0:
+            return len([entity for entity in self.entities if entity.position.x > current_entity.position.x]) == 0
+        elif self.my_team.id == 1:
+            return len([entity for entity in self.entities if entity.position.x < current_entity.position.x]) == 0
+
     def play(self):
         orders = []
         my_wizards = self.get_wizards(self.my_team.id)
-        bludgers = self.get_bludgers()
+
+        snaffle_id_already_targeted = 1000
 
         for wizard in my_wizards:
-            # if wizard.state == 0:
-            #     can_attack_bludgers = [bludger for bludger in bludgers if bludger.state != wizard.id]
-            #     closest_bludgers = sorted(can_attack_bludgers, key=lambda bludger: bludger.position.distance_with(wizard.position))
-            #
-            #     if len(closest_bludgers) != 0 and closest_bludgers[0].position.distance_with(wizard.position) <= 1000:
-            #         orders.append("PETRIFICUS {}".format(closest_bludgers[0].id))
-
             # wizard has no snaffle
             if wizard.state == 0:
-                target = self.get_closest_snaffle(wizard.position)
-                if target is not None:
-                    if self.my_team.magic >= 15:
-                        order = "ACCIO {}".format(target.id)
-                    else:
-                        order = "MOVE {} {} 150".format(target.position.x, target.position.y)
+                targets = self.get_closest_snaffles(wizard.position)
+
+                snaffles_which_can_be_shot = [snaffle for snaffle in targets if self.can_wizard_shoot(wizard.position, snaffle)
+                                              and self.no_entity_behind_snaffle(snaffle)]
+                # check if snaffle can be shot with flipendo spell
+                if len(snaffles_which_can_be_shot) > 0 and self.my_team.magic >= 20:
+                    target_id = snaffles_which_can_be_shot[0].id
+                    order = "FLIPENDO {}".format(target_id)
                     orders.append(order)
                 else:
-                    target = self.get_closest_enemy(wizard.position)
-                    order = "MOVE {} {} 150".format(target.position.x, target.position.y)
-                    orders.append(order)
+                    if len(targets) >= 1:
+                        # handle different targets if more than 2 snaffles
+                        if len(targets) >= 2:
+                            if targets[0].id != snaffle_id_already_targeted:
+                                target = targets[0]
+                            else:
+                                target = targets[1]
+                            snaffle_id_already_targeted = target.id
+                        else:
+                            target = targets[0]
+                            snaffle_id_already_targeted = 1000
+
+                        behind_snaffles = [(snaffle, wizard.position.distance_with(snaffle.position)) for snaffle in targets if self.is_snaffle_behind(wizard.position, snaffle.position)]
+                        closest_behind_snaffles = [snaffle_tuple[0] for snaffle_tuple in sorted(behind_snaffles, key=lambda tuple: tuple[1]) if snaffle_tuple[1] <= 4000]
+                        # grab behind snaffles
+                        if (self.my_team.magic >= 15 or len(targets) <= 1) and len(closest_behind_snaffles) > 0:
+                            target = closest_behind_snaffles[0]
+                            order = "ACCIO {}".format(target.id)
+                        else:
+                            order = "MOVE {} {} 150".format(target.position.x, target.position.y)
+                        orders.append(order)
+                    else:
+                        target = self.get_closest_enemy(wizard.position)
+                        order = "MOVE {} {} 150".format(target.position.x, target.position.y)
+                        orders.append(order)
             else:
-                goal_position = self.get_enemy_goal(self.my_team.id)
+                goal_position = self.get_enemy_goal_center_position(self.my_team.id)
 
                 target_position = goal_position
 
@@ -251,7 +314,7 @@ while True:
         entities.append(Entity(entity_id, entity_type, Position(x, y), Speed(vx, vy), state))
         game.entities = entities
 
-    printd(game)
+    # printd(game)
 
     order1, order2 = game.play()
 
