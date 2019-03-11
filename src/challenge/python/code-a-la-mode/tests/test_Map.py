@@ -25,7 +25,7 @@ B.#..#..#.#
     assert str(map) == expected_res
 
 
-def test_find_position():
+def test_find_position1():
     map = Map(11, 7)
     map.load_from_file("resources/map1.txt")
 
@@ -33,6 +33,18 @@ def test_find_position():
     assert map.find_position("window").is_equal(Position(5, 6))
     assert map.find_position("blueberry_crate").is_equal(Position(0, 3))
     assert map.find_position("ice_cream_crate").is_equal(Position(2, 6))
+
+
+def test_find_position2():
+    map = Map(11, 7)
+    map.load_from_file("resources/map2.txt")
+
+    assert map.find_position("dish_washer").is_equal(Position(5, 0))
+    assert map.find_position("window").is_equal(Position(5, 6))
+    assert map.find_position("blueberry_crate").is_equal(Position(6, 0))
+    assert map.find_position("ice_cream_crate").is_equal(Position(0, 1))
+    assert map.find_position("strawberry_crate").is_equal(Position(0, 4))
+    assert map.find_position("chopping_board").is_equal(Position(6, 4))
 
 
 def test_get_better_command():

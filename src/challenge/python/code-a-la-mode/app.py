@@ -2,6 +2,7 @@ import sys
 import math
 import json
 import uuid
+import itertools
 
 DEBUG = False
 
@@ -43,17 +44,48 @@ class Command:
 
 
 class Recipe:
-    def __init__(self, id):
-        self.id = id
-        self.orders = self.initialize_orders(id)
+    def __init__(self, name):
+        self.name = name
+        self.orders = self.initialize_orders(name)
 
-    def initialize_orders(self, id):
-        if id == "DISH-BLUEBERRIES-ICE_CREAM" or "DISH-BLUEBERRIES-ICE_CREAM":
+    def get_all_name_permutations(self, name):
+        items = name.split("-")
+        permutations = list(itertools.permutations(items))
+
+        return ["-".join(permutation) for permutation in permutations]
+
+    def initialize_orders(self, name):
+        if name in self.get_all_name_permutations("DISH-ICE_CREAM-BLUEBERRIES"):
             orders = [
                 {"priority": 0, "action": "take", "item": "dish", "location": "dish_washer", "validation": "DISH"},
                 {"priority": 1, "action": "take", "item": "blueberry", "location": "blueberry_crate", "validation": "BLUEBERRIES"},
                 {"priority": 1, "action": "take", "item": "ice_cream", "location": "ice_cream_crate", "validation": "ICE_CREAM"},
                 {"priority": 2, "action": "drop", "item": "window", "location": "window", "validation": "NONE"}
+            ]
+        elif name in self.get_all_name_permutations("DISH-ICE_CREAM-BLUEBERRIES-CHOPPED_STRAWBERRIES"):
+            orders = [
+                {"priority": 0, "action": "take", "item": "strawberry", "location": "strawberry_crate", "validation": "STRAWBERRIES"},
+                {"priority": 1, "action": "chop", "item": "strawberry", "location": "chopping_board", "validation": "CHOPPED_STRAWBERRIES"},
+                {"priority": 2, "action": "take", "item": "dish", "location": "dish_washer", "validation": "DISH"},
+                {"priority": 3, "action": "take", "item": "blueberry", "location": "blueberry_crate", "validation": "BLUEBERRIES"},
+                {"priority": 3, "action": "take", "item": "ice_cream", "location": "ice_cream_crate", "validation": "ICE_CREAM"},
+                {"priority": 4, "action": "drop", "item": "window", "location": "window", "validation": "NONE"}
+            ]
+        elif name in self.get_all_name_permutations("DISH-ICE_CREAM-CHOPPED_STRAWBERRIES"):
+            orders = [
+                {"priority": 0, "action": "take", "item": "strawberry", "location": "strawberry_crate", "validation": "STRAWBERRIES"},
+                {"priority": 1, "action": "chop", "item": "strawberry", "location": "chopping_board", "validation": "CHOPPED_STRAWBERRIES"},
+                {"priority": 2, "action": "take", "item": "dish", "location": "dish_washer", "validation": "DISH"},
+                {"priority": 3, "action": "take", "item": "ice_cream", "location": "ice_cream_crate", "validation": "ICE_CREAM"},
+                {"priority": 4, "action": "drop", "item": "window", "location": "window", "validation": "NONE"}
+            ]
+        elif name in self.get_all_name_permutations("DISH-BLUEBERRIES-CHOPPED_STRAWBERRIES"):
+            orders = [
+                {"priority": 0, "action": "take", "item": "strawberry", "location": "strawberry_crate", "validation": "STRAWBERRIES"},
+                {"priority": 1, "action": "chop", "item": "strawberry", "location": "chopping_board", "validation": "CHOPPED_STRAWBERRIES"},
+                {"priority": 2, "action": "take", "item": "dish", "location": "dish_washer", "validation": "DISH"},
+                {"priority": 3, "action": "take", "item": "blueberry", "location": "blueberry_crate", "validation": "BLUEBERRIES"},
+                {"priority": 4, "action": "drop", "item": "window", "location": "window", "validation": "NONE"}
             ]
         else:
             orders = []
@@ -95,7 +127,7 @@ class Map:
     def find_position(self, item_location):
         """
 
-        :param item_location: "dish_washer", "window", "blueberry_crate", "ice_cream_crate"
+        :param item_location: "dish_washer", "window", "blueberry_crate", "ice_cream_crate", "strawberry_crate", "chopping_board"
         :type item_location: string
         :return:
         :rtype: Position
@@ -111,7 +143,9 @@ class Map:
             "dish_washer": "D",
             "window": "W",
             "blueberry_crate": "B",
-            "ice_cream_crate": "I"
+            "ice_cream_crate": "I",
+            "strawberry_crate": "S",
+            "chopping_board": "C"
         }
 
         return find_letter(mapping[item_location])
