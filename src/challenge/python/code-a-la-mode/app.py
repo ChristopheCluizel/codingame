@@ -2,7 +2,6 @@ import sys
 import math
 import json
 import uuid
-import itertools
 
 DEBUG = False
 
@@ -22,6 +21,9 @@ class Position:
 
     def is_equal(self, that):
         return self.x == that.x and self.y == that.y
+
+    def distance_with(self, that):
+        return math.sqrt((that.x - self.x) * (that.x - self.x) + (that.y - self.y) * (that.y - self.y))
 
 
 class Chef:
@@ -122,18 +124,6 @@ class Dessert:
             orders = [
                 {"priority": 10, "action": "take", "item": "ICE_CREAM", "location": "ice_cream_crate", "validation": "ICE_CREAM"}
             ]
-        elif self.name == "CHOPPED_STRAWBERRIES":
-            orders = [
-                {"priority": 10, "action": "take", "item": "STRAWBERRIES", "location": "strawberry_crate", "validation": "STRAWBERRIES"},
-                {"priority": 11, "action": "chop", "item": "STRAWBERRIES", "location": "chopping_board", "validation": "CHOPPED_STRAWBERRIES"}
-            ]
-        elif self.name == "CROISSANT":
-            orders = [
-                {"priority": 10, "action": "take", "item": "DOUGH", "location": "dough_crate", "validation": "DOUGH"},
-                {"priority": 11, "action": "drop", "item": "DOUGH", "location": "oven", "validation": "NONE"},
-                {"priority": 12, "action": "wait", "item": "CROISSANT", "location": "oven", "validation": "CROISSANT"},
-                {"priority": 13, "action": "take", "item": "CROISSANT", "location": "oven", "validation": "CROISSANT"}
-            ]
         else:
             orders = []
 
@@ -218,8 +208,10 @@ class Map:
                     if self.tiles[x][y] == '#':
                         empty_fixed_positions.append(Position(x, y))
 
+            empty_positions_near_chef = get_empty_position_near_chef()
+
             for empty_fixed_position in empty_fixed_positions:
-                for empty_position_near_chef in get_empty_position_near_chef():
+                for empty_position_near_chef in empty_positions_near_chef:
                     if empty_fixed_position.is_equal(empty_position_near_chef):
                         return empty_fixed_position
         else:
@@ -240,23 +232,67 @@ class Map:
             else:
                 return None
 
-    def find_variable_position(self, item, my_chef_position, oven):
-        res = self.find_stable_position(item, my_chef_position)
+    def find_variable_position(self, item, my_chef, oven, current_command):
+        my_chef_position = my_chef.position
+        target_positions = []
 
-        if res is None or (item == "DISH" and len([table for table in self.tables_with_item if "DISH" in table.item]) == 3):
-            # find on tables
-            res = [table.position for table in self.tables_with_item if table.item == item]
+        # find on oven in priority
+        if item in ["TART", "CROISSANT"] and oven.item == item:
+            return self.find_stable_position("oven")
 
-            # find on oven
-            if oven.item == item:
-                res.append(self.find_stable_position("oven"))
+        # find on static sources
+        static_position = self.find_stable_position(item, my_chef_position)
+        if static_position is not None:
+            target_positions.append(static_position)
 
-            if len(res) > 0:
-                res = res[0]
-            else:
-                res = None
+        # if no dish in dishwasher then ignore the dishwasher
+        if self.is_no_dish_in_dishwasher() and item == "DISH":
+            target_positions = []
 
-        return res
+        # find best dish
+        if item == "DISH":
+            dynamic_positions = []
+
+            # get dish with already cooked desserts
+            for table in self.tables_with_item:
+                if "DISH-" in table.item:
+                    desserts_in_dish = [Dessert(dessert_name) for dessert_name in table.item.split("DISH-")[1].split("-")]
+                    all_desserts_in_command = True
+
+                    for dessert_in_dish in desserts_in_dish:
+                        if dessert_in_dish.name not in [dessert.name for dessert in current_command.desserts]:
+                            all_desserts_in_command = False
+
+                    if all_desserts_in_command:
+                        # if dish exists with already made desserts, then ignore dish from dishwasher
+                        target_positions = []
+                        dynamic_positions.append(table.position)
+
+            # get empty dish
+            if len(dynamic_positions) == 0:
+                for table in self.tables_with_item:
+                    if "DISH" == table.item:
+                        dynamic_positions.append(table.position)
+        else:  # find on tables
+            dynamic_positions = [table.position for table in self.tables_with_item if table.item == item]
+
+        target_positions += dynamic_positions
+
+        if len(target_positions) > 0:
+            return self.get_nearest_target_position(my_chef_position, target_positions)
+        else:
+            return None
+
+    def get_nearest_target_position(self, my_chef_position, target_positions):
+        res = []
+        for target_position in target_positions:
+            distance = my_chef_position.distance_with(target_position)
+            res.append((target_position, distance))
+
+        return sorted(res, key=lambda t: t[1])[0][0]
+
+    def is_no_dish_in_dishwasher(self):
+        return len([table for table in self.tables_with_item if "DISH" in table.item]) == 3
 
 
 class Table:
@@ -293,11 +329,9 @@ class Game:
         self.oven = None
 
     def __str__(self):
-        return "---- Round counter: {}\nmy_chef: {}\nother_chef: {}\n==== current_commands ====\n{}\n---- current_command: {}\norders: {}\ncurrent_order: {}\ntables: {}\noven: {}".format(
-            self.round_counter,
+        return "---- my_chef: {}\nother_chef: {}\n---- current_command: {}\norders: {}\ncurrent_order: {}\ntables: {}\noven: {}".format(
             self.my_chef,
             self.other_chef,
-            [str(command) for command in self.current_commands],
             self.current_command,
             "|".join([json.dumps(order) for order in self.orders]),
             self.current_order,
@@ -312,8 +346,6 @@ class Game:
 
     def get_better_command(self):
         sorted_commands = sorted([command for command in self.current_commands], key=lambda command: command.award, reverse=True)
-        print_debug("sorted_commands: ///")
-        print_debug([str(command) for command in sorted_commands])
         self.current_command = sorted_commands[0]
 
         return self.current_command
@@ -382,7 +414,7 @@ class Game:
             return True
         # check on tables
         for table in self.map.tables_with_item:
-            if dessert.name == table.item:
+            if dessert.name in table.item:
                 return True
         # check in oven
         if self.oven.item == dessert.name:
@@ -437,29 +469,29 @@ class Game:
                     break
 
         if len(game.orders) == 0:
-            advanced_desserts = self.current_command.get_desserts_from_state_and_level(True, "advanced")
-            for advanced_dessert in advanced_desserts:
-                print_debug("Find advanced desserts")
-                game.orders = self.find(advanced_dessert)
-                if len(game.orders) > 0:
-                    break
+            all_desserts = self.current_command.get_desserts_from_state_and_level(True, "advanced") + \
+                           self.current_command.get_desserts_from_state_and_level(True, "classic") + \
+                           self.current_command.get_desserts_from_state_and_level(False, "basic") + \
+                           self.current_command.get_desserts_from_state_and_level(True, "basic")
+            all_dessert_positions = []
+            for dessert in all_desserts:
+                position = self.map.find_variable_position(dessert.name, self.my_chef, self.oven, self.current_command)
+                print_debug("{}: {}".format(str(dessert), str(position)))
+                if position is not None:
+                    all_dessert_positions.append((dessert, position))
+
+            desserts_distances = [(tuple[0], self.my_chef.position.distance_with(tuple[1])) for tuple in all_dessert_positions]
+
+            sorted_list = sorted(desserts_distances, key=lambda tuple: tuple[1])
+            if len(sorted_list) > 0:
+                for basic_dessert_tuple in sorted_list:
+                    basic_dessert = basic_dessert_tuple[0]
+                    game.orders = self.find(basic_dessert)
+                    if len(game.orders) > 0:
+                        break
 
         if len(game.orders) == 0:
-            for classic_dessert in self.current_command.get_desserts_from_state_and_level(True, "classic"):
-                print_debug("Find classic desserts")
-                game.orders = self.find(classic_dessert)
-                if len(game.orders) > 0:
-                    break
-
-        if len(game.orders) == 0:
-            basic_desserts = self.current_command.get_desserts_from_state_and_level(False, "basic")
-            for basic_dessert in basic_desserts:
-                print_debug("Find basic desserts")
-                game.orders = self.find(basic_dessert)
-                if len(game.orders) > 0:
-                    break
-
-        if len(game.orders) == 0:
+            print_debug("GO to window!")
             game.orders = [{"priority": 0, "action": "drop", "item": "WINDOW", "location": "window", "validation": "NONE"}]
 
     def flush_orders(self, action):
@@ -478,19 +510,14 @@ class Game:
 
     def execute_orders(self):
         if self.current_command is None or self.current_command.is_validated(self.current_commands):
-            print_debug("Get the best command!")
             game.get_better_command()
 
-        print_debug("orders length: {}".format(len(self.orders)))
-
         if len(self.orders) == 0:
-            print_debug("No more orders, take new ones! 1")
             self.get_orders()
 
         if self.is_order_validated():
             self.orders = self.orders[1:]
             if len(self.orders) == 0:
-                print_debug("No more orders, take new ones! 2")
                 self.get_orders()
 
         current_order = self.get_order()
@@ -503,17 +530,20 @@ class Game:
         game.orders = self.flush_orders("take")
 
         if current_order["action"] == "drop":
+            print_debug("DROP")
             target_position = game.map.find_stable_position(current_order["location"], self.my_chef.position)
         elif current_order["action"] == "chop":
+            print_debug("CHOP")
             target_position = game.map.find_stable_position("chopping_board")
+        elif current_order["action"] == "take":
+            print_debug("TAKE")
+            target_position = game.map.find_variable_position(current_order["item"], self.my_chef, self.oven, self.current_command)
         else:
-            target_position = game.map.find_variable_position(current_order["item"], self.my_chef.position, self.oven)
+            target_position = None
 
-        if current_order["action"] == "wait" or target_position is None:
-            # print_debug(game)
+        if target_position is None or current_order["action"] == "wait":
             print("WAIT")
         else:
-            # print_debug(game)
             print("USE {} {}".format(target_position.x, target_position.y))
 
     def get_command_or_create(self, command_id, command_name, command_award):
