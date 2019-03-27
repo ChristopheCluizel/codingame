@@ -31,7 +31,9 @@ Complete : 100% | 61% ||
 
 Challenge | Ranking
 | :---: | :---:|
-[A*Craft](src/challenge/python/starcraft/app.py) `Python3` | 1937 / 2042
+[Code a la Mode](src/challenge/python/code-a-la-mode/app.py) `Python3` | 266 / 1543
+[Xmas Rush](src/challenge/python/xmas-rush/app.py) `Python3` | 283 / 1229
+[A*Craft](src/challenge/python/starcraft/app.py) `Python3` | 1934 / 2038
 [Code of Kutulu](src/challenge/scala/9.codeOfKutulu) `Scala` | 716 / 2092
 [Code Royale](src/challenge/scala/8.codeRoyale) `Scala` | 162 / 2120
 [Mean Max](src/challenge/scala/7.meanMax) `Scala` | 1240 / 2512
