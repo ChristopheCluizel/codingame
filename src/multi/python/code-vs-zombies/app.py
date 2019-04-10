@@ -1,11 +1,12 @@
 import sys
 import math
+from math import sqrt
 import json
 import uuid
 import random
-import copy
+import time
 
-DEBUG = True
+DEBUG = False
 
 ZONE_WIDTH = 16000
 ZONE_HEIGHT = 9000
@@ -39,19 +40,7 @@ class Position:
         return self.x == that.x and self.y == that.y
 
     def distance_with(self, that):
-        return math.sqrt((that.x - self.x) * (that.x - self.x) + (that.y - self.y) * (that.y - self.y))
-
-    def add_vector(self, vector):
-        return Position(math.floor(self.x + vector.x), math.floor(self.y + vector.y))
-
-
-class Vector:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-
-    def __str__(self):
-        return "({},{})".format(self.x, self.y)
+        return sqrt((that.x - self.x) * (that.x - self.x) + (that.y - self.y) * (that.y - self.y))
 
 
 class Human:
@@ -115,88 +104,70 @@ class Simulator:
 
         return Game(ash, nb_humans, humans, nb_zombies, zombies)
 
-    def play_round(self, initial_game, ash_target_position):
-        def get_fibonacci():
-            return [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987]
+    def play_round(self, ash, humans, zombies, ash_target_position):
+        def get_fibonacci(index):
+            return [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181, 6765, 10946, 17711, 28657, 46368, 75025, 121393, 196418, 317811][index]
 
-        def move_zombies(initial_game):
-            zombies = initial_game.zombies
-            humans = initial_game.humans
-            ash = initial_game.ash
+        def get_new_position(old_position, target_position, move_length):
+            old_x = old_position.x
+            old_y = old_position.y
+
+            xb_xa = target_position.x - old_x
+            yb_ya = target_position.y - old_y
+            distance = sqrt((xb_xa * xb_xa) + (yb_ya * yb_ya))
+
+            return Position(math.floor(old_x + safe_division(xb_xa, distance) * move_length),
+                            math.floor(old_y + safe_division(yb_ya, distance) * move_length))
+
+        def get_distances_between_person_and_others(person, others):
+            """
+
+            :param person:
+            :type person: Human or Zombie
+            :param others:
+            :type others: Human or Zombie
+            :return:
+            :rtype:
+            """
+
+            return [(other, person.position.distance_with(other.position)) for other in others]
+
+        def move_zombies(ash, humans, zombies):
             new_zombies = []
 
             for zombie in zombies:
-                humans_distances = game.get_distances_between_person_and_others(zombie, humans + [ash])
-                if len(humans_distances) > 0:
-                    target = sorted(humans_distances, key=lambda tuple: tuple[1])[0][0]
-                else:
-                    target = ash
-
-                vector_towards_target = Vector(target.position.x - zombie.position.x, target.position.y - zombie.position.y)
-                # print_debug("------ for zombie")
-                # print_debug("vector: {}".format(vector_towards_target))
-                distance_between = zombie.position.distance_with(target.position)
-                # print_debug("distance: {}".format(distance_between))
+                humans_distances = get_distances_between_person_and_others(zombie, humans + [ash])
+                sorted_humans_distances = sorted(humans_distances, key=lambda tuple: tuple[1])
+                target = sorted_humans_distances[0][0]
+                distance_between = sorted_humans_distances[0][1]
 
                 if distance_between <= ZOMBIE_RANGE:
                     new_zombie_position = target.position
                 else:
-                    unit_vector_towards_target = Vector(safe_division(vector_towards_target.x, distance_between), safe_division(vector_towards_target.y, distance_between))
-                    # print_debug("unit vector: {}".format(unit_vector_towards_target))
-                    zombie_move_vector = Vector(unit_vector_towards_target.x * ZOMBIE_MOVE, unit_vector_towards_target.y * ZOMBIE_MOVE)
-                    # print_debug("move vector: {}".format(zombie_move_vector))
-                    new_zombie_position = zombie.position.add_vector(zombie_move_vector)
+                    new_zombie_position = get_new_position(zombie.position, target.position, ZOMBIE_MOVE)
 
                 new_zombies.append(Zombie(zombie.id, new_zombie_position, None))
 
-            new_game = Game(initial_game.ash, initial_game.humans_count, initial_game.humans, initial_game.zombies_count, new_zombies)
-            return new_game
+            return new_zombies
 
-        def move_ash(initial_game, target_position):
-            ash_position = initial_game.ash.position
-            vector_towards_target = Vector(target_position.x - ash_position.x, target_position.y - ash_position.y)
-            distance_between = ash_position.distance_with(target_position)
-            unit_vector_towards_target = Vector(safe_division(vector_towards_target.x, distance_between), safe_division(vector_towards_target.y, distance_between))
-            ash_move_vector = Vector(unit_vector_towards_target.x * ASH_MOVE, unit_vector_towards_target.y * ASH_MOVE)
-            new_ash_position = ash_position.add_vector(ash_move_vector)
+        def move_ash(ash_position, target_position):
+            return get_new_position(ash_position, target_position, ASH_MOVE)
 
-            new_game = Game(
-                Human(None, new_ash_position),
-                initial_game.humans_count,
-                initial_game.humans,
-                initial_game.zombies_count,
-                initial_game.zombies
-            )
-            return new_game
-
-        def kill_zombies(initial_game):
-            ash_position = initial_game.ash.position
-            zombies = initial_game.zombies
+        def kill_zombies(ash_position, remaining_humans_count, zombies):
             score = 0
+            killed_zombie_counter = 0
+            zombies_not_in_range = []
 
-            zombies_in_range = [zombie for zombie in zombies if ash_position.distance_with(zombie.position) <= ASH_RANGE]
-            zombies_not_in_range = [zombie for zombie in zombies if ash_position.distance_with(zombie.position) > ASH_RANGE]
-            remaining_humans_count = initial_game.humans_count
+            for zombie in zombies:
+                if ash_position.distance_with(zombie.position) <= ASH_RANGE:
+                    score += (remaining_humans_count * remaining_humans_count) * 10 * (get_fibonacci(killed_zombie_counter + 2))
+                    killed_zombie_counter += 1
+                else:
+                    zombies_not_in_range.append(zombie)
 
-            for index, zombie in enumerate(zombies_in_range):
-                # print_debug("KILL zombie {}!!!".format(zombie.id))
-                index = index
-                score += (remaining_humans_count * remaining_humans_count) * 10 * (get_fibonacci()[index + 2])
+            return zombies_not_in_range, score
 
-            updated_game = Game(
-                initial_game.ash,
-                initial_game.humans_count,
-                initial_game.humans,
-                len(zombies_not_in_range),
-                zombies_not_in_range
-            )
-
-            return updated_game, score
-
-        def eat_humans(initial_game):
-            zombies = initial_game.zombies
-            humans = initial_game.humans
-
+        def eat_humans(humans, zombies):
             alive_humans = []
             for human in humans:
                 closed_zombies = [zombie for zombie in zombies if human.position.distance_with(zombie.position) == 0]
@@ -204,60 +175,46 @@ class Simulator:
                 if len(closed_zombies) == 0:
                     alive_humans.append(human)
 
-            updated_game = Game(
-                initial_game.ash,
-                len(alive_humans),
-                alive_humans,
-                initial_game.zombies_count,
-                initial_game.zombies
-            )
+            return alive_humans
 
-            return updated_game
+        new_zombies = move_zombies(ash, humans, zombies)
+        new_ash_position = move_ash(ash.position, ash_target_position)
+        new_zombies, score = kill_zombies(new_ash_position, len(humans), new_zombies)
+        new_humans = eat_humans(humans, new_zombies)
 
-        game = copy.deepcopy(initial_game)
+        return Game(Human(None, new_ash_position), len(new_humans), new_humans, len(new_zombies), new_zombies), score
 
-        game = move_zombies(game)
-        game = move_ash(game, ash_target_position)
-        game, score = kill_zombies(game)
-        game = eat_humans(game)
+    def simulate(self, game):
+        def random_strategy(round_counter, zombies, targeted_zombie):
+            if round_counter <= random.randint(0, 1):
+                return Human(None, Position(random.randint(0, ZONE_WIDTH), random.randint(0, ZONE_HEIGHT)))
+            else:
+                if targeted_zombie.id in [zombie.id for zombie in zombies]:
+                    return targeted_zombie
+                else:
+                    random_index = random.randint(0, len(zombies) - 1)
+                    targeted_zombie = zombies[random_index]
+                    return targeted_zombie
 
-        return game, score
-
-    def simulate(self, initial_game, ai):
-        game = copy.deepcopy(initial_game)
-
+        ash_target = Zombie(10000, Position(0, 0), None)
+        round_counter = 0
         total_score = 0
-        round_count = 2
+        first_move = game.zombies[0]
 
         while not game.are_all_humans_dead() and game.zombies_count > 0:
-            # print_debug("========= Round {}: points: {} =====\n{}\n".format(round_count, total_score, game))
-            ash_target_position = ai.kill_nearest_zombie_strategy(game)
-            game, score = self.play_round(game, ash_target_position)
+            ash_target = random_strategy(round_counter, game.zombies, ash_target)
+            ash_target_position = ash_target.position
+            # save the first move of Ash
+            if round_counter == 0:
+                first_move = ash_target_position
+            game, score = self.play_round(game.ash, game.humans, game.zombies, ash_target_position)
             total_score += score
-            round_count += 1
+            round_counter += 1
 
         if game.are_all_humans_dead():
             total_score = 0
 
-        return total_score
-
-
-class AI:
-    def kill_nearest_zombie_strategy(self, game):
-        distances = game.get_distances_between_person_and_others(game.ash, game.zombies)
-        nearest_zombies = sorted(distances, key=lambda tuple: tuple[1])
-
-        if len(nearest_zombies) > 0:
-            nearest_zombie = nearest_zombies[0][0]
-        else:
-            nearest_zombie = None
-
-        if nearest_zombie is not None:
-            target_position = Position(nearest_zombie.position.x, nearest_zombie.position.y)
-        else:
-            target_position = Position(0, 0)
-
-        return target_position
+        return total_score, first_move
 
 
 class Game:
@@ -267,9 +224,11 @@ class Game:
         self.humans = humans
         self.zombies_count = zombies_count
         self.zombies = zombies
+        self.round_counter = 0
 
     def __str__(self):
-        return "ash: {}\n---- Humans ----\n{}\n----Zombies ----\n{}".format(
+        return "round: {}, ash: {}\n---- Humans ----\n{}\n----Zombies ----\n{}".format(
+            self.round_counter,
             self.ash,
             "\n".join([str(human) for human in self.humans]),
             "\n".join([str(zombie) for zombie in self.zombies])
@@ -278,51 +237,51 @@ class Game:
     def are_all_humans_dead(self):
         return len(self.humans) == 0
 
-    def get_distances_between_person_and_others(self, person, others):
-        """
+    def get_best_move(self):
+        best_move = self.zombies[0].position
+        best_score = 0
 
-        :param person:
-        :type person: Human or Zombie
-        :param others:
-        :type others: Human or Zombie
-        :return:
-        :rtype:
-        """
+        start_time = time.time() * 1000
 
-        return [(other, person.position.distance_with(other.position)) for other in others]
+        i = 0
+        for i in range(0, 10000):
+            score, move = simulator.simulate(self)
+            if score > best_score:
+                best_score = score
+                best_move = move
+            during_time = time.time() * 1000
 
+            if during_time - start_time >= 98:
+                break
+
+        print_debug("Nb of simulation: {}".format(i))
+
+        return best_score, best_move
+
+
+simulator = Simulator()
 
 if __name__ == '__main__':
-    # while True:
-    #     x, y = [int(i) for i in input().split()]
-    #     ash = Human(None, Position(x, y))
-    #
-    #     humans = []
-    #     human_count = int(input())
-    #     for i in range(human_count):
-    #         human_id, human_x, human_y = [int(j) for j in input().split()]
-    #         humans.append(Human(human_id, Position(human_x, human_y)))
-    #
-    #     zombies = []
-    #     zombie_count = int(input())
-    #     for i in range(zombie_count):
-    #         zombie_id, zombie_x, zombie_y, zombie_xnext, zombie_ynext = [int(j) for j in input().split()]
-    #         zombies.append(Zombie(zombie_id, Position(zombie_x, zombie_y), Position(zombie_xnext, zombie_ynext)))
-    #
-    #     game = Game(ash, human_count, humans, zombie_count, zombies)
-    #
-    #     print_debug(game)
-    #
-    #     order = game.play()
-    #     print(order)
-    simulator = Simulator()
-    ai = AI()
-    initial_game = simulator.initialize_game(Position(5000, 0),
-                                             1,
-                                             [{"id": 0, "position_x": 950, "position_y": 6000}, {"id": 1, "position_x": 8000, "position_y": 6100}],
-                                             1,
-                                             [{"id": 0, "position_x": 3100, "position_y": 7000}, {"id": 1, "position_x": 11500, "position_y": 7100}]
-                                             )
-    final_score = simulator.simulate(initial_game, ai)
+    while True:
+        x, y = [int(i) for i in input().split()]
+        ash = Human(None, Position(x, y))
 
-    print_debug("Final score: {}".format(final_score))
+        human_count = int(input())
+        humans = [None] * human_count
+        for i in range(human_count):
+            human_id, human_x, human_y = [int(j) for j in input().split()]
+            humans[i] = Human(human_id, Position(human_x, human_y))
+
+        zombie_count = int(input())
+        zombies = [None] * zombie_count
+        for i in range(zombie_count):
+            zombie_id, zombie_x, zombie_y, zombie_xnext, zombie_ynext = [int(j) for j in input().split()]
+            zombies[i] = (Zombie(zombie_id, Position(zombie_x, zombie_y), None))
+
+        game = Game(ash, human_count, humans, zombie_count, zombies)
+
+        # print_debug(game)
+
+        best_score, best_move = game.get_best_move()
+        game.round_counter += 1
+        print("{} {}".format(best_move.x, best_move.y))

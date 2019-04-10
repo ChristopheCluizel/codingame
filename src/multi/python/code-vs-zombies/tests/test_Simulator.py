@@ -1,8 +1,9 @@
 import sys, os
 import pytest
+import cProfile, pstats, io
 
 sys.path.insert(0, os.path.abspath('..'))
-from app import Position, Simulator, AI
+from app import Position, Simulator
 
 pytest.total_score = 0
 
@@ -50,7 +51,7 @@ def test_play_round_move():
     )
 
     ash_target_position = Position(8250, 8999)
-    updated_game, round_score = simulator.play_round(inital_game, ash_target_position)
+    updated_game, round_score = simulator.play_round(inital_game.ash, inital_game.humans, inital_game.zombies, ash_target_position)
 
     assert updated_game.zombies[0].position.is_equal(Position(8250, 8599))
     assert updated_game.ash.position.is_equal(Position(675, 737))
@@ -70,7 +71,7 @@ def test_play_round_kill_zombies():
     )
 
     ash_target_position = Position(8250, 8999)
-    updated_game, round_score = simulator.play_round(inital_game, ash_target_position)
+    updated_game, round_score = simulator.play_round(inital_game.ash, inital_game.humans, inital_game.zombies, ash_target_position)
 
     assert inital_game.zombies_count == 2
     assert updated_game.zombies_count == 0
@@ -93,7 +94,7 @@ def test_play_round_eat_humans():
     )
 
     ash_target_position = Position(8250, 8999)
-    updated_game, round_score = simulator.play_round(inital_game, ash_target_position)
+    updated_game, round_score = simulator.play_round(inital_game.ash, inital_game.humans, inital_game.zombies, ash_target_position)
 
     assert inital_game.humans_count == 3
     assert inital_game.zombies_count == 3
@@ -105,17 +106,15 @@ def test_play_round_eat_humans():
 
 def test_testCase1():
     simulator = Simulator()
-    ai = AI()
     initial_game = simulator.initialize_game(Position(0, 0), 1, [{"id": 0, "position_x": 8250, "position_y": 4500}], 1, [{"id": 0, "position_x": 8250, "position_y": 8999}])
 
-    final_score = simulator.simulate(initial_game, ai)
+    final_score, move = initial_game.get_best_move()
     pytest.total_score += final_score
     assert final_score == 10
 
 
 def test_testCase2():
     simulator = Simulator()
-    ai = AI()
     initial_game = simulator.initialize_game(
         Position(5000, 0),
         1,
@@ -126,14 +125,13 @@ def test_testCase2():
          {"id": 1, "position_x": 11500, "position_y": 7100}]
     )
 
-    final_score = simulator.simulate(initial_game, ai)
+    final_score, move = initial_game.get_best_move()
     pytest.total_score += final_score
-    assert final_score == 80
+    assert final_score > 0
 
 
 def test_testCase3():
     simulator = Simulator()
-    ai = AI()
     initial_game = simulator.initialize_game(
         Position(10999, 0),
         1,
@@ -144,14 +142,13 @@ def test_testCase3():
          {"id": 1, "position_x": 15999, "position_y": 5500}]
     )
 
-    final_score = simulator.simulate(initial_game, ai)
+    final_score, move = initial_game.get_best_move()
     pytest.total_score += final_score
     assert final_score > 0
 
 
 def test_testCase4():
     simulator = Simulator()
-    ai = AI()
     initial_game = simulator.initialize_game(
         Position(8000, 2000),
         1,
@@ -161,14 +158,13 @@ def test_testCase4():
          {"id": 1, "position_x": 14000, "position_y": 6500}]
     )
 
-    final_score = simulator.simulate(initial_game, ai)
+    final_score, move = initial_game.get_best_move()
     pytest.total_score += final_score
     assert final_score > 0
 
 
 def test_testCase5():
     simulator = Simulator()
-    ai = AI()
     initial_game = simulator.initialize_game(
         Position(7500, 2000),
         2,
@@ -180,14 +176,13 @@ def test_testCase5():
          {"id": 2, "position_x": 7000, "position_y": 7500}]
     )
 
-    final_score = simulator.simulate(initial_game, ai)
+    final_score, move = initial_game.get_best_move()
     pytest.total_score += final_score
     assert final_score > 0
 
 
 def test_testCase6():
     simulator = Simulator()
-    ai = AI()
     initial_game = simulator.initialize_game(
         Position(500, 4500),
         6,
@@ -214,14 +209,13 @@ def test_testCase6():
         ]
     )
 
-    final_score = simulator.simulate(initial_game, ai)
+    final_score, move = initial_game.get_best_move()
     pytest.total_score += final_score
     assert final_score > 0
 
 
 def test_testCase7():
     simulator = Simulator()
-    ai = AI()
     initial_game = simulator.initialize_game(
         Position(0, 4000),
         2,
@@ -250,14 +244,13 @@ def test_testCase7():
         ]
     )
 
-    final_score = simulator.simulate(initial_game, ai)
+    final_score, move = initial_game.get_best_move()
     pytest.total_score += final_score
     assert final_score > 0
 
 
 def test_testCase8():
     simulator = Simulator()
-    ai = AI()
     initial_game = simulator.initialize_game(
         Position(0, 4000),
         2,
@@ -290,14 +283,13 @@ def test_testCase8():
         ]
     )
 
-    final_score = simulator.simulate(initial_game, ai)
+    final_score, move = initial_game.get_best_move()
     pytest.total_score += final_score
     assert final_score > 0
 
 
 def test_testCase9():
     simulator = Simulator()
-    ai = AI()
     initial_game = simulator.initialize_game(
         Position(8000, 4500),
         4,
@@ -324,14 +316,13 @@ def test_testCase9():
         ]
     )
 
-    final_score = simulator.simulate(initial_game, ai)
+    final_score, move = initial_game.get_best_move()
     pytest.total_score += final_score
     assert final_score > 0
 
 
 def test_testCase10():
     simulator = Simulator()
-    ai = AI()
     initial_game = simulator.initialize_game(
         Position(8000, 0),
         3,
@@ -369,14 +360,24 @@ def test_testCase10():
         ]
     )
 
-    final_score = simulator.simulate(initial_game, ai)
+    # pr = cProfile.Profile()
+    # pr.enable()
+
+    final_score, move = initial_game.get_best_move()
+
+    # pr.disable()
+    # s = io.StringIO()
+    # sortby = 'tottime'
+    # ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+    # ps.print_stats()
+    # print(s.getvalue())
+
     pytest.total_score += final_score
     assert final_score > 0
 
 
 def test_testCase11():
     simulator = Simulator()
-    ai = AI()
     initial_game = simulator.initialize_game(
         Position(9000, 684),
         3,
@@ -397,14 +398,13 @@ def test_testCase11():
          {"id": 8, "position_x": 13500, "position_y": 7448}]
     )
 
-    final_score = simulator.simulate(initial_game, ai)
+    final_score, move = initial_game.get_best_move()
     pytest.total_score += final_score
     assert final_score > 0
 
 
 def test_testCase12():
     simulator = Simulator()
-    ai = AI()
     initial_game = simulator.initialize_game(
         Position(8000, 4000),
         2,
@@ -424,14 +424,13 @@ def test_testCase12():
          {"id": 8, "position_x": 0, "position_y": 7200}]
     )
 
-    final_score = simulator.simulate(initial_game, ai)
+    final_score, move = initial_game.get_best_move()
     pytest.total_score += final_score
     assert final_score > 0
 
 
 def test_testCase13():
     simulator = Simulator()
-    ai = AI()
     initial_game = simulator.initialize_game(
         Position(4920, 6810),
         10,
@@ -464,14 +463,13 @@ def test_testCase13():
          {"id": 13, "position_x": 7550, "position_y": 7550}]
     )
 
-    final_score = simulator.simulate(initial_game, ai)
+    final_score, move = initial_game.get_best_move()
     pytest.total_score += final_score
     assert final_score > 0
 
 
 def test_testCase14():
     simulator = Simulator()
-    ai = AI()
     initial_game = simulator.initialize_game(
         Position(8020, 3500),
         3,
@@ -487,14 +485,13 @@ def test_testCase14():
          {"id": 4, "position_x": 120, "position_y": 3000}]
     )
 
-    final_score = simulator.simulate(initial_game, ai)
+    final_score, move = initial_game.get_best_move()
     pytest.total_score += final_score
     assert final_score > 0
 
 
 def test_testCase15():
     simulator = Simulator()
-    ai = AI()
     initial_game = simulator.initialize_game(
         Position(3900, 5000),
         4,
@@ -513,14 +510,13 @@ def test_testCase15():
          {"id": 5, "position_x": 0, "position_y": 1200}]
     )
 
-    final_score = simulator.simulate(initial_game, ai)
+    final_score, move = initial_game.get_best_move()
     pytest.total_score += final_score
     assert final_score > 0
 
 
 def test_testCase16():
     simulator = Simulator()
-    ai = AI()
     initial_game = simulator.initialize_game(
         Position(3989, 3259),
         3,
@@ -542,14 +538,13 @@ def test_testCase16():
          {"id": 10, "position_x": 13093, "position_y": 6253}]
     )
 
-    final_score = simulator.simulate(initial_game, ai)
+    final_score, move = initial_game.get_best_move()
     pytest.total_score += final_score
     assert final_score > 0
 
 
 def test_testCase17():
     simulator = Simulator()
-    ai = AI()
     initial_game = simulator.initialize_game(
         Position(3989, 3259),
         4,
@@ -591,14 +586,13 @@ def test_testCase17():
          {"id": 29, "position_x": 9550, "position_y": 6847}]
     )
 
-    final_score = simulator.simulate(initial_game, ai)
+    final_score, move = initial_game.get_best_move()
     pytest.total_score += final_score
     assert final_score > 0
 
 
 def test_testCase18():
     simulator = Simulator()
-    ai = AI()
     initial_game = simulator.initialize_game(
         Position(3989, 3259),
         8,
@@ -632,14 +626,13 @@ def test_testCase18():
          {"id": 17, "position_x": 15000, "position_y": 7800}]
     )
 
-    final_score = simulator.simulate(initial_game, ai)
+    final_score, move = initial_game.get_best_move()
     pytest.total_score += final_score
     assert final_score > 0
 
 
 def test_testCase19():
     simulator = Simulator()
-    ai = AI()
     initial_game = simulator.initialize_game(
         Position(8000, 4500),
         2,
@@ -651,14 +644,13 @@ def test_testCase19():
          {"id": 1, "position_x": 15500, "position_y": 6500}]
     )
 
-    final_score = simulator.simulate(initial_game, ai)
+    final_score, move = initial_game.get_best_move()
     pytest.total_score += final_score
     assert final_score > 0
 
 
 def test_testCase20():
     simulator = Simulator()
-    ai = AI()
     initial_game = simulator.initialize_game(
         Position(0, 4500),
         2,
@@ -680,14 +672,13 @@ def test_testCase20():
          {"id": 7, "position_x": 9100, "position_y": 10}]
     )
 
-    final_score = simulator.simulate(initial_game, ai)
+    final_score, move = initial_game.get_best_move()
     pytest.total_score += final_score
     assert final_score > 0
 
 
 def test_testCase21():
     simulator = Simulator()
-    ai = AI()
     initial_game = simulator.initialize_game(
         Position(7992, 8304),
         15,
@@ -717,7 +708,7 @@ def test_testCase21():
          {"id": 6, "position_x": 11322, "position_y": 8304}]
     )
 
-    final_score = simulator.simulate(initial_game, ai)
+    final_score, move = initial_game.get_best_move()
     pytest.total_score += final_score
     assert final_score > 0
 
