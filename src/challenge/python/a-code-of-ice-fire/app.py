@@ -3,6 +3,7 @@ import math
 import json
 import uuid
 import queue
+import random
 
 DEBUG = False
 
@@ -162,11 +163,11 @@ class Graph:
 
         return None
 
-    def get_node_ids(self, owner, state=None):
+    def get_node_ids(self, owners, state=None):
         if state is None:
-            return [node.id for index, node in self.nodes.items() if node.owner in owner]
+            return [node.id for index, node in self.nodes.items() if node.owner in owners]
         else:
-            return [node.id for index, node in self.nodes.items() if node.owner in owner and node.state == state]
+            return [node.id for index, node in self.nodes.items() if node.owner in owners and node.state == state]
 
 
 class Game:
@@ -264,20 +265,36 @@ class Game:
     def get_enemy_units(self):
         return self.get_units(1)
 
-    def get_spawn_position(self):
-        my_hq = self.get_buildings(0, 0)[0]
+    # TODO: rename
+    def get_pouet(self):
+        all_my_node_ids = list(self.graph.get_node_ids([0]))
+        my_occupied_node_ids = [self.position_to_node_id(building.position, self.map.width) for building in self.get_my_buildings()] + [
+            self.position_to_node_id(unit.position, self.map.width) for unit in self.get_my_units()]
+        adjacent_ids = []
 
-        if my_hq.position.x == 0:
-            return Position(1, 0)
-        else:
-            return Position(self.map.width - 2, self.map.height - 1)
+        for node_id in my_occupied_node_ids:
+            node_neighbour_ids = self.graph.get_neighbours(node_id)
+
+            for node_neighbour_id in node_neighbour_ids:
+                if self.graph.nodes[node_neighbour_id].owner == -1:
+                    adjacent_ids.append(node_neighbour_id)
+
+        return list((set(all_my_node_ids) - set(my_occupied_node_ids)).union(set(adjacent_ids)))
+
+    def get_spawn_position(self):
+        my_node_ids = self.get_pouet()
+
+        return self.node_id_to_position(random.choice(my_node_ids), self.map.width)
 
     def get_train_orders(self):
         res = []
 
-        if self.my_gold > 10 and (self.my_income - 1 >= 0):
+        if self.my_gold >= 10 and (self.my_income - 1 >= 0 and self.my_income <= 20):
             spawn_position = self.get_spawn_position()
             res.append("TRAIN {} {} {}".format(1, spawn_position.x, spawn_position.y))
+        elif self.my_gold >= 20 and (self.my_income - 4 >= 0):
+            spawn_position = self.get_spawn_position()
+            res.append("TRAIN {} {} {}".format(2, spawn_position.x, spawn_position.y))
 
         return res
 
@@ -290,15 +307,14 @@ class Game:
             self.position_to_node_id(unit.position, self.map.width) for unit in self.units]
         empty_node_ids = set(all_node_ids) - set(occupied_node_ids)
 
-        # print_debug(empty_node_ids)
-
         for unit in my_units:
             position = unit.position
             node_id = self.position_to_node_id(position, self.map.width)
-            targeted_node_id = self.graph.get_path_towards_nearest_targeted_zone(node_id, target_ids, empty_node_ids)
 
-            print_debug("unit_id: {}".format(unit.id))
-            print_debug(targeted_node_id)
+            if unit.level == 1:
+                targeted_node_id = self.graph.get_path_towards_nearest_targeted_zone(node_id, target_ids, empty_node_ids)
+            else:
+                targeted_node_id = self.graph.get_path_towards_nearest_targeted_zone(node_id, target_ids, all_node_ids)
 
             if targeted_node_id is not None:
                 targeted_position = self.node_id_to_position(targeted_node_id, self.map.width)
@@ -370,7 +386,7 @@ if __name__ == '__main__':
             units.append(unit)
         game.units = units
 
-        print_debug(game)
+        # print_debug(game)
 
         orders = game.get_orders()
         print(orders)
