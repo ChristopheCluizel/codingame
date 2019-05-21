@@ -48,7 +48,7 @@ class Building:
     def __init__(self, id, owner, type, position):
         self.id = id
         self.owner = owner
-        self.type = type
+        self.type = type  # 0: HQ, 1: mine, 2: tower
         self.position = position
 
     def __str__(self):
@@ -95,8 +95,10 @@ class Map:
 class Node:
     def __init__(self, id, owner, state):
         self.id = id
-        self.owner = owner
-        self.state = state  # 0 inactive, 1 active,
+        self.owner = owner  # 0: me, 1: enemy
+        self.state = state  # 0 inactive, 1 active
+        self.unit = None
+        self.building = None
 
 
 class Graph:
@@ -235,6 +237,33 @@ class Game:
 
         return graph
 
+    def update_graph(self):
+        # update nodes with units
+        units = game.units
+
+        for unit in units:
+            node_id = self.position_to_node_id(unit.position, self.map.width)
+            game.graph.nodes[node_id].unit = unit
+
+        # update nodes with buildings
+        mine_spots = self.mines
+        buildings = self.buildings
+
+        for mine_spot_position in mine_spots:
+            node_id = self.position_to_node_id(mine_spot_position, self.map.width)
+            self.graph.nodes[node_id].building = "mine_spot"
+
+        for building in buildings:
+            node_id = self.position_to_node_id(building.position, self.map.width)
+            if building.type == 0:
+                self.graph.nodes[node_id].building = "hq"
+            elif building.type == 1:
+                self.graph.nodes[node_id].building = "mine"
+            elif building.type == 2:
+                self.graph.nodes[node_id].building = "tower"
+            else:
+                self.graph.nodes[node_id].building = None
+
     def position_to_node_id(self, position, map_width):
         return position.x + position.y * map_width
 
@@ -265,43 +294,80 @@ class Game:
     def get_enemy_units(self):
         return self.get_units(1)
 
-    # TODO: rename
-    def get_pouet(self):
+    def get_spawn_node_ids(self):
         all_my_node_ids = list(self.graph.get_node_ids([0]))
         my_occupied_node_ids = [self.position_to_node_id(building.position, self.map.width) for building in self.get_my_buildings()] + [
             self.position_to_node_id(unit.position, self.map.width) for unit in self.get_my_units()]
         adjacent_ids = []
 
-        for node_id in my_occupied_node_ids:
+        for node_id in all_my_node_ids:
             node_neighbour_ids = self.graph.get_neighbours(node_id)
 
             for node_neighbour_id in node_neighbour_ids:
-                if self.graph.nodes[node_neighbour_id].owner == -1:
+                if self.graph.nodes[node_neighbour_id].owner in [-1, 1]:
                     adjacent_ids.append(node_neighbour_id)
 
-        return list((set(all_my_node_ids) - set(my_occupied_node_ids)).union(set(adjacent_ids)))
+        if len(adjacent_ids) > 0:
+            return adjacent_ids
+        else:
+            return list((set(all_my_node_ids) - set(my_occupied_node_ids)))
 
-    def get_spawn_position(self):
-        my_node_ids = self.get_pouet()
+    def get_spawn_position(self, targeted_move_positions):
+        my_node_ids = self.get_spawn_node_ids()
+        targeted_node_ids = [self.position_to_node_id(position, self.map.width) for position in targeted_move_positions]
 
-        return self.node_id_to_position(random.choice(my_node_ids), self.map.width)
+        # print_debug(my_node_ids)
+        # print_debug(targeted_node_ids)
 
-    def get_train_orders(self):
+        available_ids = list(set(my_node_ids) - set(targeted_node_ids))
+
+        if len(available_ids) > 0:
+            return self.node_id_to_position(random.choice(available_ids), self.map.width)
+        else:
+            return self.node_id_to_position(random.choice(my_node_ids), self.map.width)
+
+    def get_train_orders(self, targeted_positions):
         res = []
+        train_positions = []
+        income = self.my_income
+        gold = self.my_gold
+        end_train = False
 
-        if self.my_gold >= 10 and (self.my_income - 1 >= 0 and self.my_income <= 20):
-            spawn_position = self.get_spawn_position()
-            res.append("TRAIN {} {} {}".format(1, spawn_position.x, spawn_position.y))
-        elif self.my_gold >= 20 and (self.my_income - 4 >= 0):
-            spawn_position = self.get_spawn_position()
-            res.append("TRAIN {} {} {}".format(2, spawn_position.x, spawn_position.y))
+        level_one_units_count = len([unit for unit in self.units if unit.owner == 0 and unit.level == 1])
+        level_two_units_count = len([unit for unit in self.units if unit.owner == 0 and unit.level == 2])
+        no_neutral_nodes = True if len(self.graph.get_node_ids([-1])) == 0 else False
 
-        return res
+        while income > 0 and gold > 0 and not end_train:
+            if gold >= 10 and (income - 1 >= 0 and income <= 20) and level_one_units_count < 10 and not no_neutral_nodes:
+                spawn_position = self.get_spawn_position(targeted_positions)
+                income -= 1
+                gold -= 10
+                train_positions.append(spawn_position)
+                res.append("TRAIN {} {} {}".format(1, spawn_position.x, spawn_position.y))
+            elif gold >= 20 and income - 4 >= 0 and level_two_units_count < 8:
+                spawn_position = self.get_spawn_position(targeted_positions)
+                income -= 4
+                gold -= 20
+                res.append("TRAIN {} {} {}".format(2, spawn_position.x, spawn_position.y))
+                train_positions.append(spawn_position)
+            elif gold >= 30 and (income - 20 >= 0):
+                spawn_position = self.get_spawn_position(targeted_positions)
+                income -= 20
+                gold -= 30
+                res.append("TRAIN {} {} {}".format(3, spawn_position.x, spawn_position.y))
+                train_positions.append(spawn_position)
+            else:
+                end_train = True
+        return res, train_positions
 
     def get_move_orders(self):
         res = []
         my_units = self.get_my_units()
         target_ids = self.graph.get_node_ids([-1, 1])
+        already_targeted_id = []
+        move_positions = []
+        # spawn_ids = [self.position_to_node_id(spawn_position, self.map.width) for spawn_position in spawn_positions]
+
         all_node_ids = list(self.graph.nodes.keys())
         occupied_node_ids = [self.position_to_node_id(building.position, self.map.width) for building in self.buildings if (building.owner == 0)] + [
             self.position_to_node_id(unit.position, self.map.width) for unit in self.units]
@@ -312,32 +378,50 @@ class Game:
             node_id = self.position_to_node_id(position, self.map.width)
 
             if unit.level == 1:
-                targeted_node_id = self.graph.get_path_towards_nearest_targeted_zone(node_id, target_ids, empty_node_ids)
+                targeted_node_id = self.graph.get_path_towards_nearest_targeted_zone(node_id, set(target_ids) - set(already_targeted_id), all_node_ids)
             else:
-                targeted_node_id = self.graph.get_path_towards_nearest_targeted_zone(node_id, target_ids, all_node_ids)
+                targeted_node_id = self.graph.get_path_towards_nearest_targeted_zone(node_id, set(target_ids) - set(already_targeted_id), all_node_ids)
+
+            already_targeted_id.append(targeted_node_id)
 
             if targeted_node_id is not None:
                 targeted_position = self.node_id_to_position(targeted_node_id, self.map.width)
+                move_positions.append(targeted_position)
                 res.append("MOVE {} {} {}".format(unit.id, targeted_position.x, targeted_position.y))
+                # print_debug("unit {} targets {}".format(unit.id, targeted_position))
 
-        return res
+        return res, move_positions
+
+    def get_build_orders(self):
+        build_orders = []
+
+        # build mines
+        mines = [building for building in self.get_buildings(0, 1)]
+        nb_of_mines = len(mines)
+        my_qg_position = [building for building in self.buildings if building.type == 0 and building.owner == 0][0].position
+        mine_spot_nodes = [node for index, node in self.graph.nodes.items() if node.building == "mine_spot"]
+        mine_spot_distances = [
+            (self.node_id_to_position(node.id, self.map.width), my_qg_position.distance_with(self.node_id_to_position(node.id, self.map.width))) for node in mine_spot_nodes
+        ]
+        closest_mine_spot_position = sorted(mine_spot_distances, key=lambda tuple: tuple[1])[0][0]
+
+        if nb_of_mines == 0 and self.my_gold >= 20:
+            build_orders.append("BUILD MINE {} {}".format(closest_mine_spot_position.x, closest_mine_spot_position.y))
+
+        # build towers
+        return build_orders
 
     def get_orders(self):
-        train_orders = self.get_train_orders()
-        move_orders = self.get_move_orders()
+        move_orders, move_positions = self.get_move_orders()
+        train_orders, spawn_positions = self.get_train_orders(move_positions)
+        build_orders = self.get_build_orders()
 
-        train_orders_string = ";".join(train_orders)
-        move_orders_string = ";".join(move_orders)
+        all_orders = move_orders + train_orders + build_orders
 
-        if len(train_orders_string) > 0 and len(move_orders_string) > 0:
-            final_orders_string = "{};{}".format(move_orders_string, train_orders_string)
-        elif len(train_orders_string) > 0 and len(move_orders_string) == 0:
-            final_orders_string = "{}".format(train_orders_string)
-        elif len(train_orders_string) == 0 and len(move_orders_string) > 0:
-            final_orders_string = "{}".format(move_orders_string)
+        if len(all_orders) > 0:
+            return ";".join(all_orders)
         else:
-            final_orders_string = "WAIT"
-        return final_orders_string
+            return "WAIT"
 
 
 if __name__ == '__main__':
@@ -366,8 +450,6 @@ if __name__ == '__main__':
         # update graph with map
         game.graph = game.map_to_graph(map)
 
-        # print_debug(game.graph)
-
         # get buildings
         building_count = int(input())
         buildings = []
@@ -386,7 +468,10 @@ if __name__ == '__main__':
             units.append(unit)
         game.units = units
 
+        game.update_graph()
+
         # print_debug(game)
+        # print_debug(game.graph)
 
         orders = game.get_orders()
         print(orders)
