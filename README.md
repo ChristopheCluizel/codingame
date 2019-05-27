@@ -31,6 +31,7 @@ Complete : 100% | 61% ||
 
 Challenge | Ranking
 | :---: | :---:|
+[A Code of Ice & Fire](src/challenge/python/a-code-of-ice-fire/app.py) `Python3` | 512 / 2160
 [Code a la Mode](src/challenge/python/code-a-la-mode/app.py) `Python3` | 266 / 1543
 [Xmas Rush](src/challenge/python/xmas-rush/app.py) `Python3` | 283 / 1229
 [A*Craft](src/challenge/python/starcraft/app.py) `Python3` | 1934 / 2038
