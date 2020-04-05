@@ -31,7 +31,8 @@ Complete : 100% | 61% ||
 
 Challenge | Ranking
 | :---: | :---:|
-[Detective Pikaptcha](src/challenge/python/detective-pikaptcha) `Python3` | 351 / 901
+[Unleash The Geek](src/challenge/python/unleash-the-geek) `Python3` | 912 / 2162
+[Detective Pikaptcha](src/challenge/python/detective-pikaptcha) `Python3` | 347 / 894
 [A Code of Ice & Fire](src/challenge/python/a-code-of-ice-fire/app.py) `Python3` | 512 / 2160
 [Code a la Mode](src/challenge/python/code-a-la-mode/app.py) `Python3` | 266 / 1543
 [Xmas Rush](src/challenge/python/xmas-rush/app.py) `Python3` | 283 / 1229
