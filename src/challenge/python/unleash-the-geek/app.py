@@ -96,12 +96,56 @@ class Map:
         tile = self.tiles[position.x][position.y]
         return tile.is_hole
 
+    def get_ore_positions_without_hole(self):
+        res = []
+
+        for row_index in range(self.height):
+            for column_index in range(self.width):
+                tile = self.tiles[column_index][row_index]
+                if tile.ore != "?":
+                    if int(tile.ore) > 0 and not tile.is_hole:
+                        res.append(Position(column_index, row_index))
+
+        return res
+
+    def get_ore_positions(self):
+        res = []
+
+        for row_index in range(self.height):
+            for column_index in range(self.width):
+                tile = self.tiles[column_index][row_index]
+                if tile.ore != "?":
+                    if int(tile.ore) > 0:
+                        res.append(Position(column_index, row_index))
+
+        return res
+
+    def get_random_position_without_hole(self):
+        res = []
+
+        for row_index in range(self.height):
+            for column_index in range(self.width):
+                tile = self.tiles[column_index][row_index]
+                if not tile.is_hole and column_index != 0:
+                    res.append(Position(column_index, row_index))
+
+        return res[random.randint(0, len(res) - 1)]
+
 
 class Game:
     def __init__(self):
-        self.map = None,
+        self.map = Map(30, 15)
         self.units = []
         self.my_robots = []
+        self.radar_points = [
+            Position(5, 4),
+            Position(14, 4),
+            Position(23, 4),
+            Position(5, 9),
+            Position(14, 9),
+            Position(23, 9)
+        ]
+        self.target_queue = []
 
     def __str__(self):
         return "====\n---- units\n{}\n---- my robots\n{}".format(
@@ -120,11 +164,32 @@ class Game:
     def get_orders(self):
         return "WAIT"
 
-    def get_target(self):
+    def get_random_target(self):
         x = random.randint(1, map.width - 1)
         y = random.randint(0, map.height - 1)
 
         return Position(x, y)
+
+    def get_best_radar_position(self):
+        res = self.radar_points.pop(0)
+        return res
+
+    def get_best_target(self, my_robot_position):
+        ore_positions_without_hole = self.map.get_ore_positions_without_hole()
+
+        if len(ore_positions_without_hole) > 0:
+            distances_tuples = [(ore_position, ore_position.distance_with(my_robot_position)) for ore_position in ore_positions_without_hole]
+            res = sorted(distances_tuples, key=lambda tuple: tuple[1])
+            return res[0][0]
+        else:
+            ore_positions = self.map.get_ore_positions()
+
+            if len(ore_positions) > 0:
+                distances_tuples = [(ore_position, ore_position.distance_with(my_robot_position)) for ore_position in ore_positions]
+                res = sorted(distances_tuples, key=lambda tuple: tuple[1])
+                return res[0][0]
+            else:
+                return self.map.get_random_position_without_hole()
 
 
 if __name__ == '__main__':
@@ -185,21 +250,27 @@ if __name__ == '__main__':
                 my_robot.status = "IDLE"
 
             if my_robot.is_carrying_ore():
-                if my_robot.position.x == 0:
-                    my_robot.status = "IDLE"
-                    my_robot.target = game.get_target()
-                    order = "DIG {} {}".format(my_robot.target.x, my_robot.target.y)
-                else:
-                    my_robot.target = Position(0, map.height // 2)
-                    order = "MOVE {} {}".format(my_robot.target.x, my_robot.target.y)
+                my_robot.target = Position(0, my_robot.position.y)
+                order = "MOVE {} {}".format(my_robot.target.x, my_robot.target.y)
             else:
                 if my_robot.status == "IDLE":
-                    # WAIT|MOVE x y|DIG x y|REQUEST item
-                    my_robot.status = "DIG"
-                    my_robot.target = game.get_target()
-                    order = "DIG {} {}".format(my_robot.target.x, my_robot.target.y)
+                    if radar_cooldown == 0 and my_robot.item == -1:
+                        order = "REQUEST RADAR"
+                    elif trap_cooldown == 0 and my_robot.item == -1:
+                        order = "REQUEST TRAP"
+                    elif my_robot.item == 2:  # radar
+                        my_robot.status = "DIG"
+                        if len(game.radar_points) > 0:
+                            my_robot.target = game.get_best_radar_position()
+                        else:
+                            my_robot.target = game.get_best_target(my_robot.position)
+                        order = "DIG {} {}".format(my_robot.target.x, my_robot.target.y)
+                    else:
+                        my_robot.status = "DIG"
+                        my_robot.target = game.get_best_target(my_robot.position)
+                        order = "DIG {} {}".format(my_robot.target.x, my_robot.target.y)
                 elif my_robot.status == "DIG" and map.is_hole(my_robot.target):
-                    my_robot.target = game.get_target()
+                    my_robot.target = game.get_best_target(my_robot.position)
                     order = "DIG {} {}".format(my_robot.target.x, my_robot.target.y)
                 else:
                     order = "{} {} {}".format(my_robot.status, my_robot.target.x, my_robot.target.y)
