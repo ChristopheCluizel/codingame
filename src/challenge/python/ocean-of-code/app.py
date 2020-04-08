@@ -127,6 +127,8 @@ class Game:
         self.torpedo_cooldown = None
         self.sonar_cooldown = None
         self.silence_cooldown = None
+        self.mine_cooldown = None
+        self.mine_position_ids = []
         self.visited_ids = []
         self.graph = Graph()
 
@@ -189,8 +191,7 @@ class Game:
                 return direction
         return None
 
-    def get_direction_with_more_spaces(self):
-        id = self.position_to_node_id(self.my_unit.position)
+    def get_direction_with_more_spaces(self, id):
         neighbour_ids = self.graph.get_neighbours(id)
 
         if len(neighbour_ids) > 0:
@@ -206,7 +207,7 @@ class Game:
                     reverse=True,
                 )[0][0]
 
-                self.visited_ids.append(target_id)
+                # self.visited_ids.append(target_id)
                 target_position = self.node_id_to_position(target_id)
                 direction = self.get_direction_from_target_position(self.my_unit.position, target_position)
                 return direction
@@ -316,13 +317,18 @@ class Game:
 
         # TODO: approximate by saying that the enemy don't move before or after surfacing
         if "SURFACE" in orders:
-            self.enemy_zone = int(orders.split("SURFACE ")[-1])
+            p = re.compile("SURFACE [1-9]")
+            res = p.findall(orders)[0]
+            self.enemy_zone = int(res.split("SURFACE ")[-1])
             self.enemy_moves = []
             return None
 
         # TODO: approximate by saying that the enemy don't move before or after silencing, that he make a silence of 1 and in the same direction than his previous movement
         if orders == "SILENCE":
-            return self.enemy_moves[-1]
+            if len(self.enemy_moves) > 0:
+                return self.enemy_moves[-1]
+            else:
+                return "N"
 
         p = re.compile(" {1}[EWNS]{1} *")
         res = p.findall(orders)
@@ -417,18 +423,54 @@ class Game:
                     res[9].append(Position(x, y))
         return [self.position_to_node_id(position) for position in res[zone]]
 
-    def get_enemy_in_range_position(self, estimated_positions):
+    def get_enemy_in_range_positions(self, estimated_positions):
         distances_positions = [(position, self.my_unit.position.distance_with(position)) for position in estimated_positions]
 
         if len(distances_positions) > 0:
             in_range_positions = [t for t in distances_positions if t[1] <= 4]
-
-            if len(in_range_positions) > 0:
-                return sorted(in_range_positions, key=lambda t: t[1], reverse=True)[0][0]
-            else:
-                return None
+            return in_range_positions
         else:
-            return None
+            return []
+
+    def get_direction_towards_enemy(self, estimated_positions):
+        target_ids = list(set([self.position_to_node_id(position) for position in estimated_positions]) - set(self.visited_ids))
+        target_positions = [self.node_id_to_position(id) for id in target_ids]
+        distances_positions = [(position, self.my_unit.position.distance_with(position)) for position in target_positions]
+
+        if len(distances_positions) > 0:
+            closest_position = sorted(distances_positions, key=lambda t: t[1])[0][0]
+            target_id = self.position_to_node_id(closest_position)
+            self.visited_ids.append(target_id)
+            print_debug(f"toward enemy: {closest_position}")
+            # TODO: line below doesn't work. To move towards the enemy, use the graph
+            return self.get_direction_from_target_position(self.my_unit.position, closest_position)
+        else:
+            print_debug("random")
+            return self.get_direction_with_more_spaces(self.position_to_node_id(self.my_unit.position))
+
+    def get_straight_move(self, starting_node_id, direction, nb_of_moves):
+        """[summary]
+
+        Arguments:
+            starting_node_id {[type]} -- [description]
+            direction {[type]} -- [description]
+            nb_of_moves {[type]} -- [description]
+
+        Returns:
+            int -- the node id at the end of the straight move
+        """
+        current_node_id = starting_node_id
+
+        for i in range(nb_of_moves):
+            current_position = self.node_id_to_position(current_node_id)
+            next_node_id = game.get_target_node_id_from_direction(current_position, direction)
+
+            if next_node_id is None or next_node_id in self.visited_ids:
+                return None
+            else:
+                current_node_id = next_node_id
+
+        return current_node_id
 
 
 if __name__ == "__main__":
@@ -471,34 +513,117 @@ if __name__ == "__main__":
 
         if enemy_move is not None:
             game.enemy_moves.append(enemy_move)
+            game.enemy_zone = None
 
         game.my_unit = Unit(Position(x, y))
         game.silence_cooldown = silence_cooldown
         game.torpedo_cooldown = torpedo_cooldown
         game.silence_cooldown = silence_cooldown
+        game.mine_cooldown = mine_cooldown
 
         enemy_positions = game.detect_enemy(game.enemy_moves)
 
+        if len(enemy_positions) == 0 and len(game.enemy_moves) > 0:
+            game.enemy_moves = []
+
         # print_debug(game.enemy_moves)
-        print_debug(f"torpedo cooldown: {game.torpedo_cooldown}")
-        print_debug(f"silence cooldown: {game.silence_cooldown}")
+        # print_debug(f"torpedo cooldown: {game.torpedo_cooldown}")
+        # print_debug(f"silence cooldown: {game.silence_cooldown}")
+        # print_debug(game.enemy_moves)
         print_debug([str(position) for position in enemy_positions])
 
-        direction = game.get_direction_with_more_spaces()
+        direction = game.get_direction_with_more_spaces(game.position_to_node_id(game.my_unit.position))
+        # direction = game.get_direction_towards_enemy(enemy_positions)
+        print_debug(f"direction: {direction}")
+
+        all_orders = ""
+        fire_order = ""
+        mine_order = ""
+        move_order = ""
+        charge_order = ""
+        target_positions_distance = game.get_enemy_in_range_positions(enemy_positions)
+
+        if len(target_positions_distance) == 0:
+            target_position = None
+        elif len(enemy_positions) <= 4:
+            target_position = sorted(target_positions_distance, key=lambda t: t[1], reverse=True)[0][0]
+        else:
+            target_position = None
+
+        # fire order
+        if target_position is not None and game.torpedo_cooldown == 0:
+            fire_order = f"TORPEDO {target_position.x} {target_position.y}"
+
+        # TODO: don't trigger mine if I am in mine diagonal
+        # mine trigger
+        if len(enemy_positions) <= 20:
+            enemy_ids = [game.position_to_node_id(position) for position in enemy_positions]
+
+            for enemy_id in enemy_ids:
+                for mine_id in game.mine_position_ids:
+                    mine_neighbours_ids = game.graph.get_neighbours(mine_id)
+
+                    my_position_id = game.position_to_node_id(game.my_unit.position)
+                    if (enemy_id == mine_id or enemy_id in mine_neighbours_ids) and (my_position_id != mine_id and my_position_id not in mine_neighbours_ids) and len(mine_order) == 0:
+                        game.mine_position_ids.remove(mine_id)
+                        mine_position = game.node_id_to_position(mine_id)
+                        print_debug(f"FIRE: {mine_position}")
+                        mine_order = f"TRIGGER {mine_position.x} {mine_position.y}"
+
+        # mine drop
+        if game.mine_cooldown == 0 and len(mine_order) == 0 and direction is not None:
+            mine_node_id = game.get_target_node_id_from_direction(game.my_unit.position, direction)
+            game.mine_position_ids.append(mine_node_id)
+            mine_order = f"MINE {direction}"
+
+        my_current_position = game.my_unit.position
+
+        # move order
         if direction is not None:
             if game.silence_cooldown == 0:
-                print(
-                    f"SILENCE {direction} 1"
-                )  # we can make a MOVE in addition with the SILENCE
-            else:
-                if game.torpedo_cooldown != 0:
-                    print(f"MOVE {direction} TORPEDO")
+                all_res = []
+
+                for nb_of_moves in [2]:
+                    for straight_line_direction in ["N", "S", "W", "E"]:
+                        final_node_id = game.get_straight_move(game.position_to_node_id(my_current_position), straight_line_direction, nb_of_moves)
+
+                        if final_node_id is not None:
+                            all_res.append((final_node_id, straight_line_direction, nb_of_moves))
+
+                if len(all_res) > 0:
+                    selected_move = random.choice(all_res)
+                    first_node_id = game.get_target_node_id_from_direction(my_current_position, selected_move[1])
+                    second_node_id = game.get_target_node_id_from_direction(game.node_id_to_position(first_node_id), selected_move[1])
+                    game.visited_ids.append(first_node_id)
+                    game.visited_ids.append(second_node_id)
+                    move_order = f"SILENCE {selected_move[1]} {selected_move[2]}"
                 else:
-                    target_position = game.get_enemy_in_range_position(enemy_positions)
-                    if target_position is not None:
-                        print(f"TORPEDO {target_position.x} {target_position.y}|MOVE {direction} TORPEDO")
-                    else:
-                        print(f"MOVE {direction} SILENCE")
+                    game.visited_ids.append(game.get_target_node_id_from_direction(my_current_position, direction))
+                    move_order = f"MOVE {direction}"
+            else:
+                game.visited_ids.append(game.get_target_node_id_from_direction(my_current_position, direction))
+                move_order = f"MOVE {direction}"
         else:
-            game.visited_ids = [game.position_to_node_id(game.my_unit.position)]
-            print(f"SURFACE SILENCE")
+            game.visited_ids = [game.position_to_node_id(my_current_position)]
+            move_order = f"SURFACE"
+
+        # charge order
+        if game.torpedo_cooldown != 0:
+            charge_order = f"TORPEDO"
+        elif game.mine_cooldown != 0 and random.random() > 0.67:
+            charge_order = f"MINE"
+        else:
+            charge_order = f"SILENCE"
+
+        if len(fire_order) > 0:
+            all_orders = f"{fire_order}|"
+
+        if len(mine_order) > 0:
+            all_orders += f"{mine_order}|"
+
+        all_orders += f"{move_order}"
+
+        if "MOVE" in move_order:
+            all_orders += f" {charge_order}"
+
+        print(all_orders)
