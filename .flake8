@@ -1,0 +1,11 @@
+[flake8]
+ignore =
+    # line too long (131 > 79 characters)
+    E501,
+    # module level import not at top of file
+    E402,
+    # continuation line over-indented for hanging indent
+    E126
+exclude =
+    venv3,
+    .pytest_cache,
