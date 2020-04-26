@@ -31,6 +31,7 @@ Complete : 100% | 61% ||
 
 Challenge | Ranking
 | :---: | :---:|
+[Ocean of Code](src/challenge/python/ocean-of-code) `Python3` | 602 / 2279
 [Unleash The Geek](src/challenge/python/unleash-the-geek) `Python3` | 912 / 2162
 [Detective Pikaptcha](src/challenge/python/detective-pikaptcha) `Python3` | 347 / 894
 [A Code of Ice & Fire](src/challenge/python/a-code-of-ice-fire/app.py) `Python3` | 512 / 2160
