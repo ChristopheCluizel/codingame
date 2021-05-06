@@ -43,7 +43,7 @@ def test_use_spell():
     inventory_ingredients = [3, 0, 0, 0]
     spell = Spell(0, [-1, 1, 0, 0], True)
 
-    new_inventory_ingredients, spell2 = use_spell(inventory_ingredients, spell)
+    new_inventory_ingredients, spell = use_spell(inventory_ingredients, spell)
 
     assert new_inventory_ingredients == [2, 1, 0, 0]
     assert not spell.castable
@@ -59,6 +59,13 @@ def test_get_spell_to_create_ingredient():
     spells = [Spell(0, [-1, 1, 0, 0], False), Spell(1, [0, -1, 1, 0], False)]
     res_spell = get_spell_to_create_ingredient(ingredient, spells)
     assert res_spell is None
+
+
+def test_get_spell_to_create_ingredient_two_choices():
+    ingredient = [0, 1, 0, 0]
+    spells = [Spell(0, [-1, 1, 0, 0], True), Spell(1, [0, 1, 0, 0], True)]
+    res_spell = get_spell_to_create_ingredient(ingredient, spells)
+    assert res_spell.id == 1
 
 
 def test_get_actions_missing_ingredient_simple_case():
@@ -99,8 +106,6 @@ def test_get_actions_missing_ingredient_with_one_intermediate_ingredient():
 
     assert actions_res == ["CAST 0", "CAST 1"]
     assert inventory_ingredients == [2, 0, 1, 0]
-    assert not spells[0].castable
-    assert not spells[1].castable
 
 
 def test_get_actions_missing_ingredient_two_intermediate_ingredients():
